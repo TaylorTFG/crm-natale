@@ -6,12 +6,17 @@ import {
   ListItemIcon, 
   ListItemText,
   Divider,
-  Toolbar 
+  Toolbar,
+  Box,
+  Typography 
 } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import BusinessIcon from '@mui/icons-material/Business';
+import SettingsIcon from '@mui/icons-material/Settings';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 
 // Larghezza della sidebar
 const drawerWidth = 240;
@@ -35,6 +40,16 @@ const Sidebar = ({ open }) => {
       text: 'Partner',
       path: '/partner',
       icon: <BusinessIcon />
+    },
+    {
+      text: 'Impostazioni',
+      path: '/settings',
+      icon: <SettingsIcon />
+    },
+    {
+      text: 'Eliminati',
+      path: '/eliminati',
+      icon: <DeleteIcon />
     }
   ];
 
@@ -52,6 +67,19 @@ const Sidebar = ({ open }) => {
       }}
     >
       <Toolbar /> {/* Spazio per l'header */}
+      
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <CardGiftcardIcon sx={{ mr: 1, color: 'primary.main' }} />
+          <Typography variant="subtitle1" fontWeight="bold">
+            CRM Natale
+          </Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary">
+          Gestione Regali Natale
+        </Typography>
+      </Box>
+      
       <Divider />
       
       <List>
@@ -62,12 +90,33 @@ const Sidebar = ({ open }) => {
             component={Link}
             to={item.path}
             selected={location.pathname === item.path}
+            sx={{
+              '&.Mui-selected': {
+                backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                '&:hover': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                },
+              },
+            }}
           >
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />
           </ListItem>
         ))}
       </List>
+      
+      <Box sx={{ flexGrow: 1 }} />
+      
+      <Divider />
+      
+      <Box sx={{ p: 2, opacity: 0.7 }}>
+        <Typography variant="caption" display="block" gutterBottom>
+          © Overlog {new Date().getFullYear()}
+        </Typography>
+        <Typography variant="caption" display="block" color="text.secondary">
+          v1.1.0
+        </Typography>
+      </Box>
     </Drawer>
   );
 };

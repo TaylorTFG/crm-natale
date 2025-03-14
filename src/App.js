@@ -4,6 +4,8 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import ClientiPage from './pages/ClientiPage';
 import PartnerPage from './pages/PartnerPage';
+import SettingsPage from './pages/SettingsPage';
+import EliminatiPage from './pages/EliminatiPage';
 
 function App() {
   return (
@@ -12,6 +14,8 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/clienti" element={<ClientiPage />} />
         <Route path="/partner" element={<PartnerPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/eliminati" element={<EliminatiPage />} />
       </Routes>
     </Layout>
   );
