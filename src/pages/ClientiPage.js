@@ -183,13 +183,30 @@ const ClientiPage = () => {
       const result = await window.api.loadSettings();
       
       if (result.success && result.data) {
-        setSettings(result.data);
+        // Assicurati che consegnatari sia un array
+        setSettings({
+          regaloCorrente: result.data.regaloCorrente || 'Grappa',
+          annoCorrente: result.data.annoCorrente || new Date().getFullYear(),
+          consegnatari: Array.isArray(result.data.consegnatari) ? result.data.consegnatari : []
+        });
         console.log('Impostazioni caricate:', result.data);
       } else {
         console.error('Errore nel caricamento delle impostazioni:', result.error);
+        // Mantieni i valori iniziali in caso di errore
+        setSettings({
+          regaloCorrente: 'Grappa',
+          annoCorrente: new Date().getFullYear(),
+          consegnatari: []
+        });
       }
     } catch (error) {
       console.error('Errore nel caricamento delle impostazioni:', error);
+      // Mantieni i valori iniziali in caso di eccezione
+      setSettings({
+        regaloCorrente: 'Grappa',
+        annoCorrente: new Date().getFullYear(),
+        consegnatari: []
+      });
     }
   };
   
@@ -514,61 +531,61 @@ const ClientiPage = () => {
   };
   
   // Funzione per l'eliminazione multipla
-const handleBulkDelete = () => {
-  if (selected.length === 0) {
-    showSnackbar('Nessun elemento selezionato', 'warning');
-    return;
-  }
-  
-  if (window.confirm(`Sei sicuro di voler eliminare ${selected.length} ${selected.length === 1 ? 'cliente' : 'clienti'}? Questa azione non può essere annullata immediatamente.`)) {
-    handleDeleteBulk();
-  }
-  
-  handleCloseMenu();
-};
-
-// Funzione per eseguire l'eliminazione multipla
-const handleDeleteBulk = async () => {
-  try {
-    setLoading(true);
-    
-    // Crea una copia dell'array clienti
-    let updatedClienti = [...clienti];
-    let successCount = 0;
-    
-    // Elimina ogni cliente selezionato
-    for (const id of selected) {
-      try {
-        // Sposta il cliente negli eliminati
-        const result = await window.api.moveToEliminati('clienti', id);
-        
-        if (result.success) {
-          // Rimuovi il cliente dall'array
-          updatedClienti = updatedClienti.filter(c => c.id !== id);
-          successCount++;
-        } else {
-          console.error(`Errore durante l'eliminazione del cliente con ID ${id}:`, result.error);
-        }
-      } catch (error) {
-        console.error(`Errore durante l'eliminazione del cliente con ID ${id}:`, error);
-      }
+  const handleBulkDelete = () => {
+    if (selected.length === 0) {
+      showSnackbar('Nessun elemento selezionato', 'warning');
+      return;
     }
     
-    // Aggiorna lo stato
-    setClienti(updatedClienti);
+    if (window.confirm(`Sei sicuro di voler eliminare ${selected.length} ${selected.length === 1 ? 'cliente' : 'clienti'}? Questa azione non può essere annullata immediatamente.`)) {
+      handleDeleteBulk();
+    }
     
-    // Resetta la selezione
-    setSelected([]);
-    setSelectAll(false);
-    
-    showSnackbar(`Eliminati con successo ${successCount} ${successCount === 1 ? 'cliente' : 'clienti'}`, 'success');
-  } catch (error) {
-    console.error('Errore durante l\'eliminazione multipla:', error);
-    showSnackbar('Errore durante l\'eliminazione multipla', 'error');
-  } finally {
-    setLoading(false);
-  }
-};
+    handleCloseMenu();
+  };
+
+  // Funzione per eseguire l'eliminazione multipla
+  const handleDeleteBulk = async () => {
+    try {
+      setLoading(true);
+      
+      // Crea una copia dell'array clienti
+      let updatedClienti = [...clienti];
+      let successCount = 0;
+      
+      // Elimina ogni cliente selezionato
+      for (const id of selected) {
+        try {
+          // Sposta il cliente negli eliminati
+          const result = await window.api.moveToEliminati('clienti', id);
+          
+          if (result.success) {
+            // Rimuovi il cliente dall'array
+            updatedClienti = updatedClienti.filter(c => c.id !== id);
+            successCount++;
+          } else {
+            console.error(`Errore durante l'eliminazione del cliente con ID ${id}:`, result.error);
+          }
+        } catch (error) {
+          console.error(`Errore durante l'eliminazione del cliente con ID ${id}:`, error);
+        }
+      }
+      
+      // Aggiorna lo stato
+      setClienti(updatedClienti);
+      
+      // Resetta la selezione
+      setSelected([]);
+      setSelectAll(false);
+      
+      showSnackbar(`Eliminati con successo ${successCount} ${successCount === 1 ? 'cliente' : 'clienti'}`, 'success');
+    } catch (error) {
+      console.error('Errore durante l\'eliminazione multipla:', error);
+      showSnackbar('Errore durante l\'eliminazione multipla', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAssegnaConsegna = () => {
     setValoreDaAssegnare('');
@@ -647,7 +664,7 @@ const handleDeleteBulk = async () => {
     }));
   };
 
-  // Aggiungi qui il return per renderizzare l'interfaccia UI
+  // Renderizzazione dell'interfaccia UI
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -763,7 +780,7 @@ const handleDeleteBulk = async () => {
             >
               <MenuItem value="">Tutte</MenuItem>
               <MenuItem value="non_assegnato">Non assegnato</MenuItem>
-              {settings.consegnatari.map(consegnatario => (
+              {(settings.consegnatari || []).map(consegnatario => (
                 <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
               ))}
             </Select>
@@ -820,10 +837,10 @@ const handleDeleteBulk = async () => {
             </MenuItem>
 
             <MenuItem onClick={handleBulkDelete}>
-            <ListItemIcon>
-              <DeleteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Elimina Selezionati</ListItemText>
+              <ListItemIcon>
+                <DeleteIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Elimina Selezionati</ListItemText>
             </MenuItem>
             
             <MenuItem onClick={handleAssegnaConsegna}>
@@ -845,149 +862,151 @@ const handleDeleteBulk = async () => {
       
       {/* Tabella Clienti */}
       <Paper>
-        {loading && (
+        {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <CircularProgress />
           </Box>
-        )}
-        
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    checked={selectAll}
-                    onChange={handleSelectAll}
-                    inputProps={{ 'aria-label': 'select all' }}
-                  />
-                </TableCell>
-                <TableCell>Nome</TableCell>
-                <TableCell>Azienda</TableCell>
-                <TableCell>Indirizzo</TableCell>
-                <TableCell>CAP</TableCell>
-                <TableCell>Località</TableCell>
-                <TableCell>Prov.</TableCell>
-                <TableCell>{settings.regaloCorrente || 'Regalo'}</TableCell>
-                <TableCell>Extra</TableCell>
-                <TableCell>Consegna</TableCell>
-                <TableCell>GLS</TableCell>
-                <TableCell align="center">Azioni</TableCell>
-              </TableRow>
-            </TableHead>
+        ) : (
+          <>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectAll}
+                        onChange={handleSelectAll}
+                        inputProps={{ 'aria-label': 'select all' }}
+                      />
+                    </TableCell>
+                    <TableCell>Nome</TableCell>
+                    <TableCell>Azienda</TableCell>
+                    <TableCell>Indirizzo</TableCell>
+                    <TableCell>CAP</TableCell>
+                    <TableCell>Località</TableCell>
+                    <TableCell>Prov.</TableCell>
+                    <TableCell>{settings.regaloCorrente || 'Regalo'}</TableCell>
+                    <TableCell>Extra</TableCell>
+                    <TableCell>Consegna</TableCell>
+                    <TableCell>GLS</TableCell>
+                    <TableCell align="center">Azioni</TableCell>
+                  </TableRow>
+                </TableHead>
+                
+                <TableBody>
+                  {filteredClienti.length > 0 ? (
+                    filteredClienti
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((cliente) => {
+                        const isItemSelected = isSelected(cliente.id);
+                        
+                        return (
+                          <TableRow 
+                            key={cliente.id}
+                            hover
+                            selected={isItemSelected}
+                          >
+                            <TableCell padding="checkbox">
+                              <Checkbox
+                                checked={isItemSelected}
+                                onChange={() => handleSelectItem(cliente.id)}
+                                inputProps={{ 'aria-labelledby': `cliente-${cliente.id}` }}
+                              />
+                            </TableCell>
+                            <TableCell>{cliente.nome}</TableCell>
+                            <TableCell>{cliente.azienda}</TableCell>
+                            <TableCell>
+                              {cliente.indirizzo} {cliente.civico ? cliente.civico : ''}
+                            </TableCell>
+                            <TableCell>{cliente.cap}</TableCell>
+                            <TableCell>{cliente.localita}</TableCell>
+                            <TableCell>{cliente.provincia}</TableCell>
+                            <TableCell>
+                              {cliente.grappa === '1' || cliente.grappa === 1 || cliente.grappa === true ? (
+                                <Chip 
+                                  label="Sì" 
+                                  color="success" 
+                                  size="small" 
+                                />
+                              ) : ''}
+                            </TableCell>
+                            <TableCell>
+                              {cliente.extraAltro ? (
+                                <Tooltip title={cliente.extraAltro}>
+                                  <Chip 
+                                    label="Sì" 
+                                    color="info" 
+                                    size="small" 
+                                  />
+                                </Tooltip>
+                              ) : ''}
+                            </TableCell>
+                            <TableCell>
+                              {cliente.consegnaSpedizione ? (
+                                <Tooltip title={cliente.consegnaSpedizione}>
+                                  <Chip 
+                                    label={cliente.consegnaSpedizione} 
+                                    color="primary" 
+                                    size="small" 
+                                  />
+                                </Tooltip>
+                              ) : ''}
+                            </TableCell>
+                            <TableCell>
+                              {cliente.gls === '1' || cliente.gls === 1 || cliente.gls === true ? (
+                                <Chip 
+                                  label="Sì" 
+                                  color="secondary" 
+                                  size="small" 
+                                />
+                              ) : ''}
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Modifica">
+                                <IconButton 
+                                  color="primary"
+                                  onClick={() => handleEditCliente(cliente)}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              
+                              <Tooltip title="Elimina">
+                                <IconButton 
+                                  color="error"
+                                  onClick={() => handleDeleteCliente(cliente)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={12} align="center">
+                        Nessun cliente trovato
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
             
-            <TableBody>
-              {filteredClienti.length > 0 ? (
-                filteredClienti
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((cliente) => {
-                    const isItemSelected = isSelected(cliente.id);
-                    
-                    return (
-                      <TableRow 
-                        key={cliente.id}
-                        hover
-                        selected={isItemSelected}
-                      >
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            checked={isItemSelected}
-                            onChange={() => handleSelectItem(cliente.id)}
-                            inputProps={{ 'aria-labelledby': `cliente-${cliente.id}` }}
-                          />
-                        </TableCell>
-                        <TableCell>{cliente.nome}</TableCell>
-                        <TableCell>{cliente.azienda}</TableCell>
-                        <TableCell>
-                          {cliente.indirizzo} {cliente.civico ? cliente.civico : ''}
-                        </TableCell>
-                        <TableCell>{cliente.cap}</TableCell>
-                        <TableCell>{cliente.localita}</TableCell>
-                        <TableCell>{cliente.provincia}</TableCell>
-                        <TableCell>
-                          {cliente.grappa === '1' || cliente.grappa === 1 || cliente.grappa === true ? (
-                            <Chip 
-                              label="Si" 
-                              color="success" 
-                              size="small" 
-                            />
-                          ) : ''}
-                        </TableCell>
-                        <TableCell>
-                          {cliente.extraAltro ? (
-                            <Tooltip title={cliente.extraAltro}>
-                              <Chip 
-                                label="Si" 
-                                color="info" 
-                                size="small" 
-                              />
-                            </Tooltip>
-                          ) : ''}
-                        </TableCell>
-                        <TableCell>
-                          {cliente.consegnaSpedizione ? (
-                            <Tooltip title={cliente.consegnaSpedizione}>
-                              <Chip 
-                                label={cliente.consegnaSpedizione} 
-                                color="primary" 
-                                size="small" 
-                              />
-                            </Tooltip>
-                          ) : ''}
-                        </TableCell>
-                        <TableCell>
-                          {cliente.gls === '1' || cliente.gls === 1 || cliente.gls === true ? (
-                            <Chip 
-                              label="Si" 
-                              color="secondary" 
-                              size="small" 
-                            />
-                          ) : ''}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="Modifica">
-                            <IconButton 
-                              color="primary"
-                              onClick={() => handleEditCliente(cliente)}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                          
-                          <Tooltip title="Elimina">
-                            <IconButton 
-                              color="error"
-                              onClick={() => handleDeleteCliente(cliente)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={12} align="center">
-                    {loading ? 'Caricamento...' : 'Nessun cliente trovato'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={filteredClienti.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Righe per pagina:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} di ${count}`}
-        />
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              component="div"
+              count={filteredClienti.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              labelRowsPerPage="Righe per pagina:"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} di ${count}`}
+            />
+          </>
+        )}
       </Paper>
       
       {/* Dialog per aggiunta/modifica */}
@@ -1139,7 +1158,7 @@ const handleDeleteBulk = async () => {
                   onChange={handleInputChange}
                 >
                   <MenuItem value="">Non assegnato</MenuItem>
-                  {settings.consegnatari.map(consegnatario => (
+                  {(settings.consegnatari || []).map(consegnatario => (
                     <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
                   ))}
                 </Select>
@@ -1230,7 +1249,7 @@ const handleDeleteBulk = async () => {
               onChange={(e) => setValoreDaAssegnare(e.target.value)}
             >
               <MenuItem value="">Non assegnato</MenuItem>
-              {settings.consegnatari.map(consegnatario => (
+              {(settings.consegnatari || []).map(consegnatario => (
                 <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
               ))}
             </Select>
