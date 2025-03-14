@@ -17,6 +17,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import SettingsIcon from '@mui/icons-material/Settings';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 
 // Larghezza della sidebar
 const drawerWidth = 240;
@@ -40,6 +41,11 @@ const Sidebar = ({ open }) => {
       text: 'Partner',
       path: '/partner',
       icon: <BusinessIcon />
+    },
+    {
+      text: 'Spedizioni GLS',
+      path: '/spedizioni',
+      icon: <LocalShippingIcon />
     },
     {
       text: 'Impostazioni',
@@ -114,7 +120,7 @@ const Sidebar = ({ open }) => {
           © Overlog {new Date().getFullYear()}
         </Typography>
         <Typography variant="caption" display="block" color="text.secondary">
-          v1.1.0
+          v1.2.0
         </Typography>
       </Box>
     </Drawer>
