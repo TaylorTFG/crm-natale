@@ -348,7 +348,10 @@ const ClientiPage = () => {
               <TableRow>
                 <TableCell>Nome</TableCell>
                 <TableCell>Azienda</TableCell>
+                <TableCell>Indirizzo</TableCell>
+                <TableCell>N. Civico</TableCell>
                 <TableCell>Località</TableCell>
+                <TableCell>CAP</TableCell>
                 <TableCell>Provincia</TableCell>
                 <TableCell>Telefono</TableCell>
                 <TableCell>Email</TableCell>
@@ -493,6 +496,34 @@ const ClientiPage = () => {
               fullWidth
               margin="dense"
               type="email"
+            />
+
+            <TextField
+              label="Indirizzo"
+              name="indirizzo"
+              value={formData.indirizzo}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+              placeholder="Via/Piazza"
+            />
+
+            <TextField
+              label="N. Civico"
+              name="civico"
+              value={formData.civico}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+            />
+
+            <TextField
+              label="CAP"
+              name="cap"
+              value={formData.cap}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
             />
             
             <TextField
