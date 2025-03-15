@@ -28,7 +28,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 const SettingsPage = () => {
   // Stato per le impostazioni
   const [settings, setSettings] = useState({
-    regaloCorrente: '',
+    regaloCorrente: 'Grappa',
     annoCorrente: new Date().getFullYear(),
     consegnatari: []
   });
@@ -60,15 +60,53 @@ const SettingsPage = () => {
       const result = await window.api.loadSettings();
       
       if (result.success && result.data) {
-        setSettings(result.data);
-        console.log('Impostazioni caricate:', result.data);
+        // Inizializza con valori di default in caso di dati mancanti
+        const loadedSettings = {
+          regaloCorrente: result.data.regaloCorrente || 'Grappa',
+          annoCorrente: result.data.annoCorrente || new Date().getFullYear(),
+          consegnatari: Array.isArray(result.data.consegnatari) ? result.data.consegnatari : [
+            'Andrea Gosgnach', 
+            'Marco Crasnich', 
+            'Massimo Cendron', 
+            'Matteo Rocchetto'
+          ]
+        };
+        
+        setSettings(loadedSettings);
+        console.log('Impostazioni caricate:', loadedSettings);
       } else {
         console.error('Errore nel caricamento delle impostazioni:', result.error);
-        showSnackbar('Errore nel caricamento delle impostazioni', 'error');
+        
+        // Usa valori predefiniti in caso di errore
+        setSettings({
+          regaloCorrente: 'Grappa',
+          annoCorrente: new Date().getFullYear(),
+          consegnatari: [
+            'Andrea Gosgnach', 
+            'Marco Crasnich', 
+            'Massimo Cendron', 
+            'Matteo Rocchetto'
+          ]
+        });
+        
+        showSnackbar('Errore nel caricamento delle impostazioni. Usati valori predefiniti.', 'warning');
       }
     } catch (error) {
       console.error('Errore nel caricamento delle impostazioni:', error);
-      showSnackbar('Errore nel caricamento delle impostazioni', 'error');
+      
+      // Usa valori predefiniti in caso di eccezione
+      setSettings({
+        regaloCorrente: 'Grappa',
+        annoCorrente: new Date().getFullYear(),
+        consegnatari: [
+          'Andrea Gosgnach', 
+          'Marco Crasnich', 
+          'Massimo Cendron', 
+          'Matteo Rocchetto'
+        ]
+      });
+      
+      showSnackbar('Errore nel caricamento delle impostazioni. Usati valori predefiniti.', 'warning');
     } finally {
       setLoading(false);
     }
@@ -78,7 +116,14 @@ const SettingsPage = () => {
   const saveSettings = async () => {
     try {
       setLoading(true);
-      const result = await window.api.saveSettings(settings);
+      
+      // Assicurati che consegnatari sia un array
+      const settingsToSave = {
+        ...settings,
+        consegnatari: Array.isArray(settings.consegnatari) ? settings.consegnatari : []
+      };
+      
+      const result = await window.api.saveSettings(settingsToSave);
       
       if (result.success) {
         showSnackbar('Impostazioni salvate con successo', 'success');
@@ -134,7 +179,7 @@ const SettingsPage = () => {
       return;
     }
     
-    const updatedConsegnatari = [...settings.consegnatari];
+    const updatedConsegnatari = Array.isArray(settings.consegnatari) ? [...settings.consegnatari] : [];
     
     if (currentConsegnatario !== null) {
       // Modifica
@@ -167,6 +212,23 @@ const SettingsPage = () => {
       ...prev,
       open: false
     }));
+  };
+  
+  // Funzione per ripristinare i consegnatari predefiniti
+  const resetConsegnatari = () => {
+    if (window.confirm('Sei sicuro di voler ripristinare i consegnatari predefiniti?')) {
+      setSettings(prev => ({
+        ...prev,
+        consegnatari: [
+          'Andrea Gosgnach', 
+          'Marco Crasnich', 
+          'Massimo Cendron', 
+          'Matteo Rocchetto'
+        ]
+      }));
+      
+      showSnackbar('Consegnatari ripristinati', 'success');
+    }
   };
   
   return (
@@ -202,19 +264,44 @@ const SettingsPage = () => {
             <Divider sx={{ mb: 3 }} />
             
             <Box sx={{ display: 'grid', gap: 2 }}>
-              <TextField
-                label="Regalo Corrente"
-                name="regaloCorrente"
-                value={settings.regaloCorrente}
-                onChange={handleInputChange}
-                fullWidth
-                helperText="Nome del regalo per l'anno corrente (es. Grappa)"
-              />
+            <TextField
+              label="Regalo Corrente"
+              name="regaloCorrente"
+              value={settings.regaloCorrente || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSettings(prev => ({
+                  ...prev,
+                  regaloCorrente: value
+                }));
+                console.log('Nuovo valore Regalo Corrente:', value);
+              }}
+              onBlur={() => {
+                // Se il campo è vuoto, imposta un valore predefinito
+                if (!settings.regaloCorrente || settings.regaloCorrente.trim() === '') {
+                  setSettings(prev => ({
+                    ...prev,
+                    regaloCorrente: 'Grappa'
+                  }));
+                }
+              }}
+              fullWidth
+              required
+              variant="outlined"
+              helperText="Nome del regalo per l'anno corrente (es. Grappa, Vino, Cesto natalizio)"
+              InputProps={{
+                endAdornment: (
+                  <Tooltip title="Questo nome verrà utilizzato in tutto il CRM al posto di 'Grappa'">
+                    <InfoIcon color="action" sx={{ ml: 1, opacity: 0.6 }} />
+                  </Tooltip>
+                )
+              }}
+            />
               
               <TextField
                 label="Anno Corrente"
                 name="annoCorrente"
-                value={settings.annoCorrente}
+                value={settings.annoCorrente || new Date().getFullYear()}
                 onChange={handleInputChange}
                 type="number"
                 fullWidth
@@ -228,19 +315,31 @@ const SettingsPage = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">Gestione Consegnatari</Typography>
               
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={handleAddConsegnatario}
-              >
-                Aggiungi
-              </Button>
+              <Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddConsegnatario}
+                  sx={{ mr: 1 }}
+                >
+                  Aggiungi
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="secondary"
+                  onClick={resetConsegnatari}
+                >
+                  Ripristina Default
+                </Button>
+              </Box>
             </Box>
             
             <Divider sx={{ mb: 2 }} />
             
-            {settings.consegnatari.length > 0 ? (
+            {Array.isArray(settings.consegnatari) && settings.consegnatari.length > 0 ? (
               <List>
                 {settings.consegnatari.map((consegnatario, index) => (
                   <React.Fragment key={index}>

@@ -21,10 +21,16 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider
 } from '@mui/material';
 import RestoreIcon from '@mui/icons-material/Restore';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
@@ -49,6 +55,9 @@ const EliminatiPage = () => {
     message: '',
     severity: 'info'
   });
+  
+  // Stato per il dialogo di eliminazione totale
+  const [openDeleteAllDialog, setOpenDeleteAllDialog] = useState(false);
   
   // Opzioni per il filtro anno
   const [anniDisponibili, setAnniDisponibili] = useState([]);
@@ -186,6 +195,31 @@ const EliminatiPage = () => {
     }
   };
   
+  // Svuota completamente gli eliminati
+  const handleDeleteAll = async () => {
+    try {
+      setLoading(true);
+      
+      // Salva un array vuoto come eliminati
+      const result = await window.api.saveData('eliminati', []);
+      
+      if (result.success) {
+        setEliminati([]);
+        setFilteredEliminati([]);
+        showSnackbar('Cestino svuotato con successo', 'success');
+        setOpenDeleteAllDialog(false);
+      } else {
+        console.error('Errore durante lo svuotamento del cestino:', result.error);
+        showSnackbar('Errore durante lo svuotamento del cestino', 'error');
+      }
+    } catch (error) {
+      console.error('Errore durante lo svuotamento del cestino:', error);
+      showSnackbar('Errore durante lo svuotamento del cestino', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Gestione paginazione
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -238,6 +272,16 @@ const EliminatiPage = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Elementi Eliminati</Typography>
+        
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteSweepIcon />}
+          onClick={() => setOpenDeleteAllDialog(true)}
+          disabled={eliminati.length === 0}
+        >
+          Svuota Cestino
+        </Button>
       </Box>
       
       {/* Filtri e Ricerca */}
@@ -297,88 +341,142 @@ const EliminatiPage = () => {
         </Box>
       </Paper>
       
+      {/* Statistiche */}
+      {eliminati.length > 0 && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography>
+              Totale elementi nel cestino: <strong>{eliminati.length}</strong>
+            </Typography>
+            
+            <Typography>
+              Elementi visualizzati: <strong>{filteredEliminati.length}</strong>
+            </Typography>
+            
+            {tipoFilter && (
+              <Typography>
+                {tipoFilter === 'clienti' ? 'Clienti' : 'Partner'}: <strong>
+                  {eliminati.filter(item => item.tipo === tipoFilter).length}
+                </strong>
+              </Typography>
+            )}
+          </Box>
+        </Paper>
+      )}
+      
       {/* Tabella Eliminati */}
       <Paper>
-        {loading && (
+        {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <CircularProgress />
           </Box>
-        )}
-        
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Nome</TableCell>
-                <TableCell>Azienda</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Località</TableCell>
-                <TableCell>Data Eliminazione</TableCell>
-                <TableCell align="center">Azioni</TableCell>
-              </TableRow>
-            </TableHead>
-            
-            <TableBody>
-              {filteredEliminati.length > 0 ? (
-                filteredEliminati
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.nome || ''}</TableCell>
-                      <TableCell>{item.azienda || ''}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={item.tipo === 'clienti' ? 'Cliente' : 'Partner'}
-                          color={item.tipo === 'clienti' ? 'primary' : 'secondary'}
-                          size="small"
-                        />
+        ) : (
+          <>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nome</TableCell>
+                    <TableCell>Azienda</TableCell>
+                    <TableCell>Tipo</TableCell>
+                    <TableCell>Località</TableCell>
+                    <TableCell>Data Eliminazione</TableCell>
+                    <TableCell align="center">Azioni</TableCell>
+                  </TableRow>
+                </TableHead>
+                
+                <TableBody>
+                  {filteredEliminati.length > 0 ? (
+                    filteredEliminati
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.nome || ''}</TableCell>
+                          <TableCell>{item.azienda || ''}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={item.tipo === 'clienti' ? 'Cliente' : 'Partner'}
+                              color={item.tipo === 'clienti' ? 'primary' : 'secondary'}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>{item.localita || ''}</TableCell>
+                          <TableCell>{formatDate(item.eliminatoIl)}</TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Ripristina">
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleRestore(item.id)}
+                              >
+                                <RestoreIcon />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <Tooltip title="Elimina definitivamente">
+                              <IconButton
+                                color="error"
+                                onClick={() => handleDeletePermanently(item.id)}
+                              >
+                                <DeleteForeverIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        {loading ? 'Caricamento...' : 'Nessun elemento eliminato trovato'}
                       </TableCell>
-                      <TableCell>{item.localita || ''}</TableCell>
-                      <TableCell>{formatDate(item.eliminatoIl)}</TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Ripristina">
-                          <IconButton
-                            color="primary"
-                            onClick={() => handleRestore(item.id)}
-                          >
-                            <RestoreIcon />
-                          </IconButton>
-                        </Tooltip>
-                        
-                        <Tooltip title="Elimina definitivamente">
-                          <IconButton
-                            color="error"
-                            onClick={() => handleDeletePermanently(item.id)}
-                          >
-                            <DeleteForeverIcon />
-                          </IconButton>
-                        </Tooltip>
-                        </TableCell>
                     </TableRow>
-                  ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    {loading ? 'Caricamento...' : 'Nessun elemento eliminato trovato'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={filteredEliminati.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Righe per pagina:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} di ${count}`}
-        />
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+              component="div"
+              count={filteredEliminati.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              labelRowsPerPage="Righe per pagina:"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} di ${count}`}
+            />
+          </>
+        )}
       </Paper>
+      
+      {/* Dialog per conferma eliminazione totale */}
+      <Dialog open={openDeleteAllDialog} onClose={() => setOpenDeleteAllDialog(false)}>
+        <DialogTitle>
+          Svuota Cestino
+        </DialogTitle>
+        
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Sei sicuro di voler eliminare <strong>definitivamente</strong> tutti gli elementi nel cestino?
+          </Typography>
+          
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            Questa operazione non può essere annullata e tutti i {eliminati.length} elementi verranno persi permanentemente.
+          </Typography>
+        </DialogContent>
+        
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteAllDialog(false)}>Annulla</Button>
+          <Button 
+            variant="contained" 
+            color="error"
+            onClick={handleDeleteAll}
+            disabled={loading}
+          >
+            Elimina Tutto
+          </Button>
+        </DialogActions>
+      </Dialog>
       
       {/* Snackbar per notifiche */}
       <Snackbar

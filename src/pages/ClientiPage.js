@@ -215,16 +215,16 @@ const ClientiPage = () => {
     let filtered = [...clienti];
     
     // Applica filtro ricerca
-    if (searchTerm.trim() !== '') {
-      const lowercasedFilter = searchTerm.toLowerCase();
-      filtered = filtered.filter(item => {
-        return (
-          (item.nome && item.nome.toLowerCase().includes(lowercasedFilter)) ||
-          (item.azienda && item.azienda.toLowerCase().includes(lowercasedFilter)) ||
-          (item.localita && item.localita.toLowerCase().includes(lowercasedFilter))
-        );
-      });
-    }
+  if (searchTerm.trim() !== '') {
+    const lowercasedFilter = searchTerm.toLowerCase();
+    filtered = filtered.filter(item => {
+      return (
+        (item.nome && item.nome.toLowerCase().includes(lowercasedFilter)) ||
+        (item.azienda && item.azienda.toLowerCase().includes(lowercasedFilter)) ||
+        (item.localita && item.localita.toLowerCase().includes(lowercasedFilter))
+      );
+    });
+  }
     
     // Applica filtro località
     if (filtroLocalita !== '') {
@@ -265,7 +265,7 @@ const ClientiPage = () => {
         item.gls === (value === '1' ? true : false)
       );
     }
-    
+      
     setFilteredClienti(filtered);
     
     // Resetta la selezione quando cambiano i filtri
@@ -322,6 +322,7 @@ const ClientiPage = () => {
   // Gestione paginazione
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
+    // Non resettare la selezione quando si cambia pagina
   };
   
   const handleChangeRowsPerPage = (event) => {
@@ -496,6 +497,19 @@ const ClientiPage = () => {
       setSelected([]);
     }
   };
+
+  const handleSelectAllFiltered = () => {
+    if (selected.length === filteredClienti.length) {
+      // Se sono già selezionati tutti, deseleziona
+      setSelected([]);
+      setSelectAll(false);
+    } else {
+      // Altrimenti seleziona tutti i filtrati
+      const allFilteredIds = filteredClienti.map(item => item.id);
+      setSelected(allFilteredIds);
+      setSelectAll(true);
+    }
+  };
   
   const handleSelectItem = (id) => {
     const selectedIndex = selected.indexOf(id);
@@ -518,6 +532,15 @@ const ClientiPage = () => {
   const handleOpenMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
+
+  <Button
+  variant="outlined"
+  size="small"
+  color="primary"
+  onClick={handleSelectAllFiltered}
+>
+  {selected.length === filteredClienti.length ? 'Deseleziona tutti' : 'Seleziona tutti filtrati'}
+</Button>
   
   const handleCloseMenu = () => {
     setAnchorEl(null);
@@ -879,8 +902,20 @@ const ClientiPage = () => {
                         inputProps={{ 'aria-label': 'select all' }}
                       />
                     </TableCell>
-                    <TableCell>Nome</TableCell>
-                    <TableCell>Azienda</TableCell>
+                    <SortableTableCell 
+                    label="Nome" 
+                    field="nome"
+                    orderBy={orderBy} 
+                    orderDirection={orderDirection} 
+                    onRequestSort={handleRequestSort} 
+                    />
+                    <SortableTableCell
+                    label="Azienda"
+                    field="azienda"
+                    orderBy={orderBy}
+                    orderDirection={orderDirection}
+                    onRequestSort={handleRequestSort} 
+                    />
                     <TableCell>Indirizzo</TableCell>
                     <TableCell>CAP</TableCell>
                     <TableCell>Località</TableCell>
@@ -892,7 +927,7 @@ const ClientiPage = () => {
                     <TableCell align="center">Azioni</TableCell>
                   </TableRow>
                 </TableHead>
-                
+
                 <TableBody>
                   {filteredClienti.length > 0 ? (
                     filteredClienti
@@ -995,7 +1030,7 @@ const ClientiPage = () => {
             </TableContainer>
             
             <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
               component="div"
               count={filteredClienti.length}
               rowsPerPage={rowsPerPage}
