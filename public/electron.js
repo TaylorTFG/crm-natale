@@ -36,10 +36,14 @@ function createWindow() {
     }
   });
 
+// Disabilita la sicurezza web dopo la creazione della finestra
+mainWindow.webContents.session.webSecurity = false;  
+
   // Carica l'URL dell'app
+  const appPath = app.getAppPath();
   const startUrl = isDev 
     ? 'http://localhost:3000' 
-    : `file://${path.join(__dirname, '../build/index.html')}`;
+    : `file://${path.join(appPath, 'build', 'index.html')}`;
   
   console.log('Loading URL:', startUrl);
   mainWindow.loadURL(startUrl);
