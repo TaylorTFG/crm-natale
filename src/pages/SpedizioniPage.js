@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -32,6 +32,9 @@ import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import SortIcon from '@mui/icons-material/Sort';
 
 const SpedizioniPage = () => {
   // Stato per i dati
@@ -49,6 +52,10 @@ const SpedizioniPage = () => {
   const [filtroProvincia, setFiltroProvincia] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroGLS, setFiltroGLS] = useState('');
+  
+  // Stato per l'ordinamento
+  const [orderBy, setOrderBy] = useState('nome');
+  const [orderDirection, setOrderDirection] = useState('asc');
   
   // Lista delle località e province per i filtri
   const [localitaList, setLocalitaList] = useState([]);
@@ -94,6 +101,41 @@ const SpedizioniPage = () => {
       setProvinciaList(province);
     }
   }, [records]);
+  
+  // Ordina i record filtrati in base ai criteri di ordinamento
+  const sortedRecords = useMemo(() => {
+    // Crea una copia dei dati filtrati
+    const dataToSort = [...filteredRecords];
+    
+    // Definisci una funzione di confronto per l'ordinamento
+    const compareFunction = (a, b) => {
+      // Gestisci i valori null/undefined
+      if (!a[orderBy] && !b[orderBy]) return 0;
+      if (!a[orderBy]) return 1;
+      if (!b[orderBy]) return -1;
+      
+      // Confronta stringhe ignorando maiuscole/minuscole
+      const valueA = String(a[orderBy]).toLowerCase();
+      const valueB = String(b[orderBy]).toLowerCase();
+      
+      // Esegui il confronto in base alla direzione
+      if (orderDirection === 'asc') {
+        return valueA.localeCompare(valueB);
+      } else {
+        return valueB.localeCompare(valueA);
+      }
+    };
+    
+    // Ordina i dati
+    return dataToSort.sort(compareFunction);
+  }, [filteredRecords, orderBy, orderDirection]);
+  
+  // Funzione di gestione della richiesta di ordinamento
+  const handleRequestSort = (event, property) => {
+    const isAsc = orderBy === property && orderDirection === 'asc';
+    setOrderDirection(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
   
   // Carica tutti i dati
   const loadAllData = async () => {
@@ -220,7 +262,7 @@ const SpedizioniPage = () => {
     
     if (checked) {
       // Seleziona tutti gli elementi filtrati nella pagina corrente
-      const currentPageIds = filteredRecords
+      const currentPageIds = sortedRecords
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
         .map(item => item.id);
       
@@ -328,6 +370,37 @@ const SpedizioniPage = () => {
     }));
   };
   
+  // Componente per la cella di intestazione ordinabile
+  const SortableTableCell = ({ label, field }) => {
+    return (
+      <TableCell>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            cursor: 'pointer' 
+          }}
+          onClick={() => handleRequestSort(null, field)}
+        >
+          <Typography component="span" variant="inherit">
+            {label}
+          </Typography>
+          <Box sx={{ ml: 0.5, display: 'flex', alignItems: 'center' }}>
+            {orderBy === field ? (
+              orderDirection === 'asc' ? (
+                <ArrowUpwardIcon fontSize="small" />
+              ) : (
+                <ArrowDownwardIcon fontSize="small" />
+              )
+            ) : (
+              <SortIcon fontSize="small" sx={{ opacity: 0.5 }} />
+            )}
+          </Box>
+        </Box>
+      </TableCell>
+    );
+  };
+
   // Renderizzazione dell'interfaccia UI
   return (
     <Box sx={{ p: 3 }}>
@@ -489,8 +562,14 @@ const SpedizioniPage = () => {
                       />
                     </TableCell>
                     <TableCell>Tipo</TableCell>
-                    <TableCell>Nome</TableCell>
-                    <TableCell>Azienda</TableCell>
+                    <SortableTableCell 
+                      label="Nome" 
+                      field="nome"
+                    />
+                    <SortableTableCell
+                      label="Azienda"
+                      field="azienda"
+                    />
                     <TableCell>Indirizzo</TableCell>
                     <TableCell>CAP</TableCell>
                     <TableCell>Località</TableCell>
@@ -502,7 +581,7 @@ const SpedizioniPage = () => {
                 
                 <TableBody>
                   {filteredRecords.length > 0 ? (
-                    filteredRecords
+                    sortedRecords
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                       .map((record) => {
                         const isItemSelected = isSelected(record.id);

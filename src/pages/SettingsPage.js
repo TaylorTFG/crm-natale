@@ -17,13 +17,15 @@ import {
   DialogActions,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  Tooltip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
+import InfoIcon from '@mui/icons-material/Info';
 
 const SettingsPage = () => {
   // Stato per le impostazioni
@@ -112,32 +114,50 @@ const SettingsPage = () => {
     }
   };
   
-  // Salva le impostazioni
-  const saveSettings = async () => {
-    try {
-      setLoading(true);
-      
-      // Assicurati che consegnatari sia un array
-      const settingsToSave = {
-        ...settings,
-        consegnatari: Array.isArray(settings.consegnatari) ? settings.consegnatari : []
-      };
-      
-      const result = await window.api.saveSettings(settingsToSave);
-      
-      if (result.success) {
-        showSnackbar('Impostazioni salvate con successo', 'success');
-      } else {
-        console.error('Errore nel salvataggio delle impostazioni:', result.error);
-        showSnackbar('Errore nel salvataggio delle impostazioni', 'error');
-      }
-    } catch (error) {
-      console.error('Errore nel salvataggio delle impostazioni:', error);
+// Salva le impostazioni
+const saveSettings = async () => {
+  try {
+    setLoading(true);
+    
+    // Crea un nuovo oggetto invece di usare "...settings"
+    const settingsToSave = {
+      regaloCorrente: settings.regaloCorrente || 'Regalo',
+      annoCorrente: settings.annoCorrente || new Date().getFullYear(),
+      consegnatari: Array.isArray(settings.consegnatari) ? 
+        [...settings.consegnatari] : 
+        ['Andrea Gosgnach', 'Marco Crasnich', 'Massimo Cendron', 'Matteo Rocchetto']
+    };
+    
+    console.log('Salvataggio impostazioni (pre-save):', JSON.stringify(settingsToSave));
+    
+    const result = await window.api.saveSettings(settingsToSave);
+    
+    if (result.success) {
+      // Ricarica i dati per confermare che sono stati salvati correttamente
+      await loadSettings();
+      showSnackbar('Impostazioni salvate con successo', 'success');
+    } else {
+      console.error('Errore nel salvataggio delle impostazioni:', result.error);
       showSnackbar('Errore nel salvataggio delle impostazioni', 'error');
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Errore nel salvataggio delle impostazioni:', error);
+    showSnackbar('Errore nel salvataggio delle impostazioni', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Aggiungi questa nuova funzione
+const changeRegaloCorrente = (value) => {
+  // Logga il cambio con dati specifici
+  console.log(`Cambio regalo da "${settings.regaloCorrente}" a "${value}"`);
+  
+  setSettings(prev => ({
+    ...prev,
+    regaloCorrente: value
+  }));
+};
   
   // Gestione input
   const handleInputChange = (e) => {
@@ -147,6 +167,17 @@ const SettingsPage = () => {
       [name]: value
     }));
   };
+
+// Gestione cambio regalo
+const handleRegaloChange = (e) => {
+  const value = e.target.value;
+  console.log('Nuovo valore Regalo Corrente:', value);
+  setSettings(prev => ({
+    ...prev,
+    regaloCorrente: value
+  }));
+};
+  
   
   // Gestione consegnatari
   const handleAddConsegnatario = () => {
@@ -268,22 +299,11 @@ const SettingsPage = () => {
               label="Regalo Corrente"
               name="regaloCorrente"
               value={settings.regaloCorrente || ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                setSettings(prev => ({
-                  ...prev,
-                  regaloCorrente: value
-                }));
-                console.log('Nuovo valore Regalo Corrente:', value);
-              }}
-              onBlur={() => {
-                // Se il campo è vuoto, imposta un valore predefinito
-                if (!settings.regaloCorrente || settings.regaloCorrente.trim() === '') {
-                  setSettings(prev => ({
-                    ...prev,
-                    regaloCorrente: 'Grappa'
-                  }));
-                }
+              onChange={(e) => changeRegaloCorrente(e.target.value)}
+              onBlur={(e) => {
+                // Anche al uscita dal campo, assicurati che il valore venga aggiornato
+                console.log(`Blur del campo regalo: "${e.target.value}"`);
+                changeRegaloCorrente(e.target.value);
               }}
               fullWidth
               required
@@ -296,7 +316,7 @@ const SettingsPage = () => {
                   </Tooltip>
                 )
               }}
-            />
+              />
               
               <TextField
                 label="Anno Corrente"

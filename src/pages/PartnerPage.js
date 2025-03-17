@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -45,6 +45,9 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PersonIcon from '@mui/icons-material/Person';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import SortIcon from '@mui/icons-material/Sort';
 
 const PartnerPage = () => {
   // Stato per i dati dei partner
@@ -63,6 +66,10 @@ const PartnerPage = () => {
   const [filtroGrappa, setFiltroGrappa] = useState('');
   const [filtroConsegna, setFiltroConsegna] = useState('');
   const [filtroGLS, setFiltroGLS] = useState('');
+  
+  // Stato per l'ordinamento
+  const [orderBy, setOrderBy] = useState('nome');
+  const [orderDirection, setOrderDirection] = useState('asc');
   
   // Lista delle località e province per i filtri
   const [localitaList, setLocalitaList] = useState([]);
@@ -170,6 +177,41 @@ const PartnerPage = () => {
       setProvinciaList(province);
     }
   }, [partner]);
+  
+  // Ordina i partner filtrati in base ai criteri di ordinamento
+  const sortedPartner = useMemo(() => {
+    // Crea una copia dei dati filtrati
+    const dataToSort = [...filteredPartner];
+    
+    // Definisci una funzione di confronto per l'ordinamento
+    const compareFunction = (a, b) => {
+      // Gestisci i valori null/undefined
+      if (!a[orderBy] && !b[orderBy]) return 0;
+      if (!a[orderBy]) return 1;
+      if (!b[orderBy]) return -1;
+      
+      // Confronta stringhe ignorando maiuscole/minuscole
+      const valueA = String(a[orderBy]).toLowerCase();
+      const valueB = String(b[orderBy]).toLowerCase();
+      
+      // Esegui il confronto in base alla direzione
+      if (orderDirection === 'asc') {
+        return valueA.localeCompare(valueB);
+      } else {
+        return valueB.localeCompare(valueA);
+      }
+    };
+    
+    // Ordina i dati
+    return dataToSort.sort(compareFunction);
+  }, [filteredPartner, orderBy, orderDirection]);
+  
+  // Funzione di gestione della richiesta di ordinamento
+  const handleRequestSort = (event, property) => {
+    const isAsc = orderBy === property && orderDirection === 'asc';
+    setOrderDirection(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
   
   // Carica i partner dal backend
   const loadPartner = async () => {
@@ -362,903 +404,949 @@ const PartnerPage = () => {
     setOpenDialog(true);
   };
   
-  // Chiudi dialog
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-  };
+// Chiudi dialog
+const handleCloseDialog = () => {
+  setOpenDialog(false);
+};
+
+// Salva partner
+const handleSavePartner = async () => {
+  // Validazione basica
+  if (!formData.nome) {
+    showSnackbar('Il nome è obbligatorio', 'error');
+    return;
+  }
   
-  // Salva partner
-  const handleSavePartner = async () => {
-    // Validazione basica
-    if (!formData.nome) {
-      showSnackbar('Il nome è obbligatorio', 'error');
-      return;
+  try {
+    setLoading(true);
+    
+    let updatedPartner;
+    
+    if (currentPartner) {
+      // Aggiornamento partner esistente
+      const updatedItem = {
+        ...currentPartner,
+        ...formData,
+        lastUpdate: Date.now()
+      };
+      
+      updatedPartner = partner.map(p => 
+        p.id === currentPartner.id ? updatedItem : p
+      );
+      
+      showSnackbar('Partner aggiornato con successo', 'success');
+    } else {
+      // Nuovo partner
+      const newPartner = {
+        ...formData,
+        id: Date.now(),
+        tipo: 'partner',
+        eliminato: false,
+        createdAt: Date.now()
+      };
+      
+      updatedPartner = [...partner, newPartner];
+      showSnackbar('Partner creato con successo', 'success');
     }
     
+    // Aggiorna lo stato
+    setPartner(updatedPartner);
+    
+    // Salva nel backend
+    await window.api.saveData('partner', updatedPartner);
+    
+    // Chiudi dialog
+    handleCloseDialog();
+  } catch (error) {
+    console.error('Errore durante il salvataggio:', error);
+    showSnackbar('Errore durante il salvataggio', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Elimina partner
+const handleDeletePartner = async (partner) => {
+  if (window.confirm(`Sei sicuro di voler eliminare il partner "${partner.nome}"?`)) {
     try {
       setLoading(true);
       
-      let updatedPartner;
+      // Sposta il partner negli eliminati
+      const result = await window.api.moveToEliminati('partner', partner.id);
       
-      if (currentPartner) {
-        // Aggiornamento partner esistente
-        const updatedItem = {
-          ...currentPartner,
-          ...formData,
-          lastUpdate: Date.now()
-        };
+      if (result.success) {
+        // Aggiorna lo stato locale
+        setPartner(prev => prev.filter(p => p.id !== partner.id));
         
-        updatedPartner = partner.map(p => 
-          p.id === currentPartner.id ? updatedItem : p
-        );
-        
-        showSnackbar('Partner aggiornato con successo', 'success');
+        showSnackbar('Partner eliminato con successo', 'success');
       } else {
-        // Nuovo partner
-        const newPartner = {
-          ...formData,
-          id: Date.now(),
-          tipo: 'partner',
-          eliminato: false,
-          createdAt: Date.now()
-        };
-        
-        updatedPartner = [...partner, newPartner];
-        showSnackbar('Partner creato con successo', 'success');
+        console.error('Errore durante l\'eliminazione:', result.error);
+        showSnackbar('Errore durante l\'eliminazione', 'error');
       }
-      
-      // Aggiorna lo stato
-      setPartner(updatedPartner);
-      
-      // Salva nel backend
-      await window.api.saveData('partner', updatedPartner);
-      
-      // Chiudi dialog
-      handleCloseDialog();
     } catch (error) {
-      console.error('Errore durante il salvataggio:', error);
-      showSnackbar('Errore durante il salvataggio', 'error');
+      console.error('Errore durante l\'eliminazione:', error);
+      showSnackbar('Errore durante l\'eliminazione', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }
+};
+
+// Gestione selezione
+const handleSelectAll = (event) => {
+  const checked = event.target.checked;
+  setSelectAll(checked);
   
-  // Elimina partner
-  const handleDeletePartner = async (partner) => {
-    if (window.confirm(`Sei sicuro di voler eliminare il partner "${partner.nome}"?`)) {
+  if (checked) {
+    // Seleziona tutti gli elementi filtrati nella pagina corrente
+    const currentPageIds = sortedPartner
+      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+      .map(item => item.id);
+    
+    setSelected(currentPageIds);
+  } else {
+    // Deseleziona tutti
+    setSelected([]);
+  }
+};
+
+const handleSelectAllFiltered = () => {
+  if (selected.length === filteredPartner.length) {
+    // Se sono già selezionati tutti, deseleziona
+    setSelected([]);
+    setSelectAll(false);
+  } else {
+    // Altrimenti seleziona tutti i filtrati
+    const allFilteredIds = filteredPartner.map(item => item.id);
+    setSelected(allFilteredIds);
+    setSelectAll(true);
+  }
+};
+
+const handleSelectItem = (id) => {
+  const selectedIndex = selected.indexOf(id);
+  let newSelected = [];
+  
+  if (selectedIndex === -1) {
+    // Aggiungi alla selezione
+    newSelected = [...selected, id];
+  } else {
+    // Rimuovi dalla selezione
+    newSelected = selected.filter(itemId => itemId !== id);
+  }
+  
+  setSelected(newSelected);
+};
+
+const isSelected = (id) => selected.includes(id);
+
+// Gestione menu azioni di gruppo
+const handleOpenMenu = (event) => {
+  setAnchorEl(event.currentTarget);
+};
+
+const handleCloseMenu = () => {
+  setAnchorEl(null);
+};
+
+// Azioni di gruppo
+const handleAssegnaRegalo = () => {
+  setValoreDaAssegnare('1');
+  setOpenAssegnaRegaloDialog(true);
+  handleCloseMenu();
+};
+
+const handleAssegnaConsegna = () => {
+  setValoreDaAssegnare('');
+  setOpenAssegnaConsegnaDialog(true);
+  handleCloseMenu();
+};
+
+const handleAssegnaGLS = () => {
+  setValoreDaAssegnare('1');
+  setOpenAssegnaGLSDialog(true);
+  handleCloseMenu();
+};
+
+// Funzione per l'eliminazione multipla
+const handleBulkDelete = () => {
+  if (selected.length === 0) {
+    showSnackbar('Nessun elemento selezionato', 'warning');
+    return;
+  }
+  
+  if (window.confirm(`Sei sicuro di voler eliminare ${selected.length} ${selected.length === 1 ? 'partner' : 'partner'}? Questa azione non può essere annullata immediatamente.`)) {
+    handleDeleteBulk();
+  }
+  
+  handleCloseMenu();
+};
+
+// Funzione per eseguire l'eliminazione multipla
+const handleDeleteBulk = async () => {
+  try {
+    setLoading(true);
+    
+    // Crea una copia dell'array partner
+    let updatedPartner = [...partner];
+    let successCount = 0;
+    
+    // Elimina ogni partner selezionato
+    for (const id of selected) {
       try {
-        setLoading(true);
-        
         // Sposta il partner negli eliminati
-        const result = await window.api.moveToEliminati('partner', partner.id);
+        const result = await window.api.moveToEliminati('partner', id);
         
         if (result.success) {
-          // Aggiorna lo stato locale
-          setPartner(prev => prev.filter(p => p.id !== partner.id));
-          
-          showSnackbar('Partner eliminato con successo', 'success');
+          // Rimuovi il partner dall'array
+          updatedPartner = updatedPartner.filter(p => p.id !== id);
+          successCount++;
         } else {
-          console.error('Errore durante l\'eliminazione:', result.error);
-          showSnackbar('Errore durante l\'eliminazione', 'error');
+          console.error(`Errore durante l'eliminazione del partner con ID ${id}:`, result.error);
         }
       } catch (error) {
-        console.error('Errore durante l\'eliminazione:', error);
-        showSnackbar('Errore durante l\'eliminazione', 'error');
-      } finally {
-        setLoading(false);
+        console.error(`Errore durante l'eliminazione del partner con ID ${id}:`, error);
       }
     }
-  };
-  
-  // Gestione selezione
-  const handleSelectAll = (event) => {
-    const checked = event.target.checked;
-    setSelectAll(checked);
     
-    if (checked) {
-      // Seleziona tutti gli elementi filtrati nella pagina corrente
-      const currentPageIds = filteredPartner
-        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-        .map(item => item.id);
-      
-      setSelected(currentPageIds);
-    } else {
-      // Deseleziona tutti
-      setSelected([]);
-    }
-  };
-  
-  const handleSelectAllFiltered = () => {
-    if (selected.length === filteredPartner.length) {
-      // Se sono già selezionati tutti, deseleziona
-      setSelected([]);
-      setSelectAll(false);
-    } else {
-      // Altrimenti seleziona tutti i filtrati
-      const allFilteredIds = filteredPartner.map(item => item.id);
-      setSelected(allFilteredIds);
-      setSelectAll(true);
-    }
-  };
-  
-  const handleSelectItem = (id) => {
-    const selectedIndex = selected.indexOf(id);
-    let newSelected = [];
+    // Aggiorna lo stato
+    setPartner(updatedPartner);
     
-    if (selectedIndex === -1) {
-      // Aggiungi alla selezione
-      newSelected = [...selected, id];
-    } else {
-      // Rimuovi dalla selezione
-      newSelected = selected.filter(itemId => itemId !== id);
-    }
+    // Resetta la selezione
+    setSelected([]);
+    setSelectAll(false);
     
-    setSelected(newSelected);
-  };
-  
-  const isSelected = (id) => selected.includes(id);
-  
-  // Gestione menu azioni di gruppo
-  const handleOpenMenu = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-  
-  const handleCloseMenu = () => {
-    setAnchorEl(null);
-  };
-  
-  // Azioni di gruppo
-  const handleAssegnaRegalo = () => {
-    setValoreDaAssegnare('1');
-    setOpenAssegnaRegaloDialog(true);
-    handleCloseMenu();
-  };
-  
-  const handleAssegnaConsegna = () => {
-    setValoreDaAssegnare('');
-    setOpenAssegnaConsegnaDialog(true);
-    handleCloseMenu();
-  };
-  
-  const handleAssegnaGLS = () => {
-    setValoreDaAssegnare('1');
-    setOpenAssegnaGLSDialog(true);
-    handleCloseMenu();
-  };
-  
-  // Funzione per l'eliminazione multipla
-  const handleBulkDelete = () => {
-    if (selected.length === 0) {
-      showSnackbar('Nessun elemento selezionato', 'warning');
-      return;
-    }
-    
-    if (window.confirm(`Sei sicuro di voler eliminare ${selected.length} ${selected.length === 1 ? 'partner' : 'partner'}? Questa azione non può essere annullata immediatamente.`)) {
-      handleDeleteBulk();
-    }
-    
-    handleCloseMenu();
-  };
+    showSnackbar(`Eliminati con successo ${successCount} ${successCount === 1 ? 'partner' : 'partner'}`, 'success');
+  } catch (error) {
+    console.error('Errore durante l\'eliminazione multipla:', error);
+    showSnackbar('Errore durante l\'eliminazione multipla', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  // Funzione per eseguire l'eliminazione multipla
-  const handleDeleteBulk = async () => {
-    try {
-      setLoading(true);
+// Esegui azione di gruppo
+const handleBulkUpdate = async (propertyName, propertyValue) => {
+  if (selected.length === 0) {
+    showSnackbar('Nessun elemento selezionato', 'warning');
+    return;
+  }
+  
+  try {
+    setLoading(true);
+    
+    const result = await window.api.updateBulk('partner', selected, propertyName, propertyValue);
+    
+    if (result.success) {
+      // Aggiorna lo stato locale
+      setPartner(result.data);
       
-      // Crea una copia dell'array partner
-      let updatedPartner = [...partner];
-      let successCount = 0;
+      showSnackbar(`Aggiornamento completato: ${selected.length} elementi`, 'success');
       
-      // Elimina ogni partner selezionato
-      for (const id of selected) {
-        try {
-          // Sposta il partner negli eliminati
-          const result = await window.api.moveToEliminati('partner', id);
-          
-          if (result.success) {
-            // Rimuovi il partner dall'array
-            updatedPartner = updatedPartner.filter(p => p.id !== id);
-            successCount++;
-          } else {
-            console.error(`Errore durante l'eliminazione del partner con ID ${id}:`, result.error);
-          }
-        } catch (error) {
-          console.error(`Errore durante l'eliminazione del partner con ID ${id}:`, error);
-        }
-      }
-      
-      // Aggiorna lo stato
-      setPartner(updatedPartner);
+      // Chiudi i dialoghi
+      setOpenAssegnaRegaloDialog(false);
+      setOpenAssegnaConsegnaDialog(false);
+      setOpenAssegnaGLSDialog(false);
       
       // Resetta la selezione
       setSelected([]);
       setSelectAll(false);
-      
-      showSnackbar(`Eliminati con successo ${successCount} ${successCount === 1 ? 'partner' : 'partner'}`, 'success');
-    } catch (error) {
-      console.error('Errore durante l\'eliminazione multipla:', error);
-      showSnackbar('Errore durante l\'eliminazione multipla', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Esegui azione di gruppo
-  const handleBulkUpdate = async (propertyName, propertyValue) => {
-    if (selected.length === 0) {
-      showSnackbar('Nessun elemento selezionato', 'warning');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      const result = await window.api.updateBulk('partner', selected, propertyName, propertyValue);
-      
-      if (result.success) {
-        // Aggiorna lo stato locale
-        setPartner(result.data);
-        
-        showSnackbar(`Aggiornamento completato: ${selected.length} elementi`, 'success');
-        
-        // Chiudi i dialoghi
-        setOpenAssegnaRegaloDialog(false);
-        setOpenAssegnaConsegnaDialog(false);
-        setOpenAssegnaGLSDialog(false);
-        
-        // Resetta la selezione
-        setSelected([]);
-        setSelectAll(false);
-      } else {
-        console.error('Errore durante l\'aggiornamento:', result.error);
-        showSnackbar('Errore durante l\'aggiornamento', 'error');
-      }
-    } catch (error) {
-      console.error('Errore durante l\'aggiornamento:', error);
+    } else {
+      console.error('Errore durante l\'aggiornamento:', result.error);
       showSnackbar('Errore durante l\'aggiornamento', 'error');
-    } finally {
-      setLoading(false);
     }
-  };
-  
-  // Reset filtri
-  const resetFilters = () => {
-    setSearchTerm('');
-    setFiltroLocalita('');
-    setFiltroProvincia('');
-    setFiltroGrappa('');
-    setFiltroConsegna('');
-    setFiltroGLS('');
-  };
-  
-  // Mostra notifica
-  const showSnackbar = (message, severity = 'info') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
-    });
-  };
-  
-  // Chiudi notifica
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({
-      ...prev,
-      open: false
-    }));
-  };
+  } catch (error) {
+    console.error('Errore durante l\'aggiornamento:', error);
+    showSnackbar('Errore durante l\'aggiornamento', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
+// Reset filtri
+const resetFilters = () => {
+  setSearchTerm('');
+  setFiltroLocalita('');
+  setFiltroProvincia('');
+  setFiltroGrappa('');
+  setFiltroConsegna('');
+  setFiltroGLS('');
+};
+
+// Mostra notifica
+const showSnackbar = (message, severity = 'info') => {
+  setSnackbar({
+    open: true,
+    message,
+    severity
+  });
+};
+
+// Chiudi notifica
+const handleCloseSnackbar = () => {
+  setSnackbar(prev => ({
+    ...prev,
+    open: false
+  }));
+};
+
+// Componente per la cella di intestazione ordinabile
+const SortableTableCell = ({ label, field }) => {
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Gestione Partner</Typography>
-        
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="outlined"
-            startIcon={<UploadIcon />}
-            onClick={handleImportExcel}
-            disabled={loading}
-          >
-            Importa Excel
-          </Button>
-          
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddPartner}
-            disabled={loading}
-            color="secondary"
-          >
-            Nuovo Partner
-          </Button>
+    <TableCell>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          cursor: 'pointer' 
+        }}
+        onClick={() => handleRequestSort(null, field)}
+      >
+        <Typography component="span" variant="inherit">
+          {label}
+        </Typography>
+        <Box sx={{ ml: 0.5, display: 'flex', alignItems: 'center' }}>
+          {orderBy === field ? (
+            orderDirection === 'asc' ? (
+              <ArrowUpwardIcon fontSize="small" />
+            ) : (
+              <ArrowDownwardIcon fontSize="small" />
+            )
+          ) : (
+            <SortIcon fontSize="small" sx={{ opacity: 0.5 }} />
+          )}
         </Box>
       </Box>
+    </TableCell>
+  );
+};
+
+return (
+  <Box sx={{ p: 3 }}>
+    {/* Header */}
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Typography variant="h4">Gestione Partner</Typography>
       
-      {/* Filtri e Ricerca */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '2fr 1fr 1fr' }, 
-          gap: 2,
-          alignItems: 'center',
-          mb: 2
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Cerca per nome, azienda, località o tipologia..."
-              size="small"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </Box>
-          
-          <FormControl size="small" fullWidth>
-            <InputLabel>Località</InputLabel>
-            <Select
-              value={filtroLocalita}
-              label="Località"
-              onChange={(e) => setFiltroLocalita(e.target.value)}
-            >
-              <MenuItem value="">Tutte</MenuItem>
-              {localitaList.map(localita => (
-                <MenuItem key={localita} value={localita}>{localita}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl size="small" fullWidth>
-            <InputLabel>Provincia</InputLabel>
-            <Select
-              value={filtroProvincia}
-              label="Provincia"
-              onChange={(e) => setFiltroProvincia(e.target.value)}
-            >
-              <MenuItem value="">Tutte</MenuItem>
-              {provinciaList.map(provincia => (
-                <MenuItem key={provincia} value={provincia}>{provincia}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <Button
+          variant="outlined"
+          startIcon={<UploadIcon />}
+          onClick={handleImportExcel}
+          disabled={loading}
+        >
+          Importa Excel
+        </Button>
+        
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleAddPartner}
+          disabled={loading}
+          color="secondary"
+        >
+          Nuovo Partner
+        </Button>
+      </Box>
+    </Box>
+    
+    {/* Filtri e Ricerca */}
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '2fr 1fr 1fr' }, 
+        gap: 2,
+        alignItems: 'center',
+        mb: 2
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Cerca per nome, azienda, località o tipologia..."
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </Box>
         
-        <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr auto' }, 
-          gap: 2,
-          alignItems: 'center'
-        }}>
-          <FormControl size="small" fullWidth>
-            <InputLabel>{settings.regaloCorrente || 'Regalo'}</InputLabel>
-            <Select
-              value={filtroGrappa}
-              label={settings.regaloCorrente || 'Regalo'}
-              onChange={(e) => setFiltroGrappa(e.target.value)}
-            >
-              <MenuItem value="">Tutti</MenuItem>
-              <MenuItem value="si">Con regalo</MenuItem>
-              <MenuItem value="no">Senza regalo</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <FormControl size="small" fullWidth>
-            <InputLabel>Consegna</InputLabel>
-            <Select
-              value={filtroConsegna}
-              label="Consegna"
-              onChange={(e) => setFiltroConsegna(e.target.value)}
-            >
-              <MenuItem value="">Tutte</MenuItem>
-              <MenuItem value="non_assegnato">Non assegnato</MenuItem>
-              {(settings.consegnatari || []).map(consegnatario => (
-                <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl size="small" fullWidth>
-            <InputLabel>GLS</InputLabel>
-            <Select
-              value={filtroGLS}
-              label="GLS"
-              onChange={(e) => setFiltroGLS(e.target.value)}
-            >
-              <MenuItem value="">Tutte</MenuItem>
-              <MenuItem value="si">Da spedire</MenuItem>
-              <MenuItem value="no">Non da spedire</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={resetFilters}
+        <FormControl size="small" fullWidth>
+          <InputLabel>Località</InputLabel>
+          <Select
+            value={filtroLocalita}
+            label="Località"
+            onChange={(e) => setFiltroLocalita(e.target.value)}
           >
-            Reset Filtri
-          </Button>
-        </Box>
-      </Paper>
+            <MenuItem value="">Tutte</MenuItem>
+            {localitaList.map(localita => (
+              <MenuItem key={localita} value={localita}>{localita}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        
+        <FormControl size="small" fullWidth>
+          <InputLabel>Provincia</InputLabel>
+          <Select
+            value={filtroProvincia}
+            label="Provincia"
+            onChange={(e) => setFiltroProvincia(e.target.value)}
+          >
+            <MenuItem value="">Tutte</MenuItem>
+            {provinciaList.map(provincia => (
+              <MenuItem key={provincia} value={provincia}>{provincia}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       
-      {/* Azioni di gruppo */}
-      {selected.length > 0 && (
-        <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-          <Typography>
-            {selected.length} {selected.length === 1 ? 'elemento selezionato' : 'elementi selezionati'}
-          </Typography>
-          
-          <Button
-            variant="contained"
-            size="small"
-            onClick={handleOpenMenu}
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr auto' }, 
+        gap: 2,
+        alignItems: 'center'
+      }}>
+        <FormControl size="small" fullWidth>
+          <InputLabel>{settings.regaloCorrente || 'Regalo'}</InputLabel>
+          <Select
+            value={filtroGrappa}
+            label={settings.regaloCorrente || 'Regalo'}
+            onChange={(e) => setFiltroGrappa(e.target.value)}
           >
-            Azioni di gruppo
-          </Button>
-          
-          <Menu
-            anchorEl={anchorEl}
-            open={openMenu}
-            onClose={handleCloseMenu}
+            <MenuItem value="">Tutti</MenuItem>
+            <MenuItem value="si">Con regalo</MenuItem>
+            <MenuItem value="no">Senza regalo</MenuItem>
+          </Select>
+        </FormControl>
+        
+        <FormControl size="small" fullWidth>
+          <InputLabel>Consegna</InputLabel>
+          <Select
+            value={filtroConsegna}
+            label="Consegna"
+            onChange={(e) => setFiltroConsegna(e.target.value)}
           >
-            <MenuItem onClick={handleAssegnaRegalo}>
-              <ListItemIcon>
-                <CardGiftcardIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Assegna Regalo</ListItemText>
-            </MenuItem>
+            <MenuItem value="">Tutte</MenuItem>
+            <MenuItem value="non_assegnato">Non assegnato</MenuItem>
+            {(settings.consegnatari || []).map(consegnatario => (
+              <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        
+        <FormControl size="small" fullWidth>
+          <InputLabel>GLS</InputLabel>
+          <Select
+            value={filtroGLS}
+            label="GLS"
+            onChange={(e) => setFiltroGLS(e.target.value)}
+          >
+            <MenuItem value="">Tutte</MenuItem>
+            <MenuItem value="si">Da spedire</MenuItem>
+            <MenuItem value="no">Non da spedire</MenuItem>
+          </Select>
+        </FormControl>
+        
+        <Button
+          variant="outlined"
+          startIcon={<FilterListIcon />}
+          onClick={resetFilters}
+        >
+          Reset Filtri
+        </Button>
+      </Box>
+    </Paper>
+    
+    {/* Azioni di gruppo */}
+    {selected.length > 0 && (
+      <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Typography>
+          {selected.length} {selected.length === 1 ? 'elemento selezionato' : 'elementi selezionati'}
+        </Typography>
+        
+        <Button
+          variant="contained"
+          size="small"
+          onClick={handleOpenMenu}
+        >
+          Azioni di gruppo
+        </Button>
+        
+        <Menu
+          anchorEl={anchorEl}
+          open={openMenu}
+          onClose={handleCloseMenu}
+        >
+          <MenuItem onClick={handleAssegnaRegalo}>
+            <ListItemIcon>
+              <CardGiftcardIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Assegna Regalo</ListItemText>
+          </MenuItem>
 
-            <MenuItem onClick={handleBulkDelete}>
-              <ListItemIcon>
-                <DeleteIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Elimina Selezionati</ListItemText>
-            </MenuItem>
-            
-            <MenuItem onClick={handleAssegnaConsegna}>
-              <ListItemIcon>
-                <PersonIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Assegna Consegnatario</ListItemText>
-            </MenuItem>
-            
-            <MenuItem onClick={handleAssegnaGLS}>
-              <ListItemIcon>
-                <LocalShippingIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Assegna Spedizione GLS</ListItemText>
-            </MenuItem>
-          </Menu>
+          <MenuItem onClick={handleBulkDelete}>
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Elimina Selezionati</ListItemText>
+          </MenuItem>
           
-          <Button
-            variant="outlined"
-            size="small"
-            color="primary"
-            onClick={handleSelectAllFiltered}
-          >
-            {selected.length === filteredPartner.length ? 'Deseleziona tutti' : 'Seleziona tutti filtrati'}
-          </Button>
+          <MenuItem onClick={handleAssegnaConsegna}>
+            <ListItemIcon>
+              <PersonIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Assegna Consegnatario</ListItemText>
+          </MenuItem>
+          
+          <MenuItem onClick={handleAssegnaGLS}>
+            <ListItemIcon>
+              <LocalShippingIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Assegna Spedizione GLS</ListItemText>
+          </MenuItem>
+        </Menu>
+        
+        <Button
+          variant="outlined"
+          size="small"
+          color="primary"
+          onClick={handleSelectAllFiltered}
+        >
+          {selected.length === filteredPartner.length ? 'Deseleziona tutti' : 'Seleziona tutti filtrati'}
+        </Button>
+      </Box>
+    )}
+    
+    {/* Tabella Partner */}
+    <Paper>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress />
         </Box>
-      )}
-      
-      {/* Tabella Partner */}
-      <Paper>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={selectAll}
-                        onChange={handleSelectAll}
-                        inputProps={{ 'aria-label': 'select all' }}
-                      />
-                    </TableCell>
-                    <TableCell>Nome</TableCell>
-                    <TableCell>Azienda</TableCell>
-                    <TableCell>Tipologia</TableCell>
-                    <TableCell>Indirizzo</TableCell>
-                    <TableCell>CAP</TableCell>
-                    <TableCell>Località</TableCell>
-                    <TableCell>Prov.</TableCell>
-                    <TableCell>{settings.regaloCorrente || 'Regalo'}</TableCell>
-                    <TableCell>Extra</TableCell>
-                    <TableCell>Consegna</TableCell>
-                    <TableCell>GLS</TableCell>
-                    <TableCell align="center">Azioni</TableCell>
-                  </TableRow>
-                </TableHead>
-                
-                <TableBody>
-                  {filteredPartner.length > 0 ? (
-                    filteredPartner
-                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                      .map((item) => {
-                        const isItemSelected = isSelected(item.id);
-                        
-                        return (
-                          <TableRow 
-                            key={item.id}
-                            hover
-                            selected={isItemSelected}
-                          >
-                            <TableCell padding="checkbox">
-                              <Checkbox
-                                checked={isItemSelected}
-                                onChange={() => handleSelectItem(item.id)}
-                                inputProps={{ 'aria-labelledby': `partner-${item.id}` }}
+      ) : (
+        <>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selectAll}
+                      onChange={handleSelectAll}
+                      inputProps={{ 'aria-label': 'select all' }}
+                    />
+                  </TableCell>
+                  <SortableTableCell 
+                    label="Nome" 
+                    field="nome"
+                  />
+                  <SortableTableCell
+                    label="Azienda"
+                    field="azienda"
+                  />
+                  <TableCell>Tipologia</TableCell>
+                  <TableCell>Indirizzo</TableCell>
+                  <TableCell>CAP</TableCell>
+                  <TableCell>Località</TableCell>
+                  <TableCell>Prov.</TableCell>
+                  <TableCell>{settings.regaloCorrente || 'Regalo'}</TableCell>
+                  <TableCell>Extra</TableCell>
+                  <TableCell>Consegna</TableCell>
+                  <TableCell>GLS</TableCell>
+                  <TableCell align="center">Azioni</TableCell>
+                </TableRow>
+              </TableHead>
+              
+              <TableBody>
+                {filteredPartner.length > 0 ? (
+                  sortedPartner
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((item) => {
+                      const isItemSelected = isSelected(item.id);
+                      
+                      return (
+                        <TableRow 
+                          key={item.id}
+                          hover
+                          selected={isItemSelected}
+                        >
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={isItemSelected}
+                              onChange={() => handleSelectItem(item.id)}
+                              inputProps={{ 'aria-labelledby': `partner-${item.id}` }}
+                            />
+                          </TableCell>
+                          <TableCell>{item.nome}</TableCell>
+                          <TableCell>{item.azienda}</TableCell>
+                          <TableCell>
+                            {item.tipologia ? (
+                              <Chip 
+                                color="secondary" 
+                                size="small" 
+                                label={item.tipologia} 
                               />
-                            </TableCell>
-                            <TableCell>{item.nome}</TableCell>
-                            <TableCell>{item.azienda}</TableCell>
-                            <TableCell>
-                              {item.tipologia ? (
-                                <Chip 
-                                  color="secondary" 
-                                  size="small" 
-                                  label={item.tipologia} 
-                                />
-                              ) : ''}
-                            </TableCell>
-                            <TableCell>
-                              {item.indirizzo} {item.civico ? item.civico : ''}
-                            </TableCell>
-                            <TableCell>{item.cap}</TableCell>
-                            <TableCell>{item.localita}</TableCell>
-                            <TableCell>{item.provincia}</TableCell>
-                            <TableCell>
-                              {item.grappa === '1' || item.grappa === 1 || item.grappa === true ? (
-                                <Chip 
-                                  label="Sì" 
-                                  color="success" 
-                                  size="small" 
-                                />
-                              ) : ''}
-                            </TableCell>
-                            <TableCell>
-                              {item.extraAltro ? (
-                                <Tooltip title={item.extraAltro}>
-                                  <Chip 
-                                    label="Sì" 
-                                    color="info" 
-                                    size="small" 
-                                  />
-                                </Tooltip>
-                              ) : ''}
-                            </TableCell>
-                            <TableCell>
-                              {item.consegnaSpedizione ? (
-                                <Tooltip title={item.consegnaSpedizione}>
-                                  <Chip 
-                                    label={item.consegnaSpedizione} 
-                                    color="primary" 
-                                    size="small" 
-                                  />
-                                </Tooltip>
-                              ) : ''}
-                            </TableCell>
-                            <TableCell>
-                              {item.gls === '1' || item.gls === 1 || item.gls === true ? (
+                            ) : ''}
+                          </TableCell>
+                          <TableCell>
+                            {item.indirizzo} {item.civico ? item.civico : ''}
+                          </TableCell>
+                          <TableCell>{item.cap}</TableCell>
+                          <TableCell>{item.localita}</TableCell>
+                          <TableCell>{item.provincia}</TableCell>
+                          <TableCell>
+                            {item.grappa === '1' || item.grappa === 1 || item.grappa === true ? (
+                              <Chip 
+                                label="Sì" 
+                                color="success" 
+                                size="small" 
+                              />
+                            ) : ''}
+                          </TableCell>
+                          <TableCell>
+                            {item.extraAltro ? (
+                              <Tooltip title={item.extraAltro}>
                                 <Chip 
                                   label="Sì" 
-                                  color="secondary" 
+                                  color="info" 
                                   size="small" 
                                 />
-                              ) : ''}
-                            </TableCell>
-                            <TableCell align="center">
-                              <Tooltip title="Modifica">
-                                <IconButton 
-                                  color="primary"
-                                  onClick={() => handleEditPartner(item)}
-                                >
-                                  <EditIcon />
-                                </IconButton>
                               </Tooltip>
-                              
-                              <Tooltip title="Elimina">
-                                <IconButton 
-                                  color="error"
-                                  onClick={() => handleDeletePartner(item)}
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
+                            ) : ''}
+                          </TableCell>
+                          <TableCell>
+                            {item.consegnaSpedizione ? (
+                              <Tooltip title={item.consegnaSpedizione}>
+                                <Chip 
+                                  label={item.consegnaSpedizione} 
+                                  color="primary" 
+                                  size="small" 
+                                />
                               </Tooltip>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={13} align="center">
-                        Nessun partner trovato
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50, 100]}
-              component="div"
-              count={filteredPartner.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              labelRowsPerPage="Righe per pagina:"
-              labelDisplayedRows={({ from, to, count }) => `${from}-${to} di ${count}`}
-            />
-          </>
-        )}
-      </Paper>
-
-      {/* Dialog per aggiunta/modifica */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {currentPartner ? 'Modifica Partner' : 'Nuovo Partner'}
-        </DialogTitle>
-        
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Nome *"
-                name="nome"
-                value={formData.nome}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                margin="dense"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Azienda"
-                name="azienda"
-                value={formData.azienda}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Tipologia"
-                name="tipologia"
-                value={formData.tipologia}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-                placeholder="Es: Fornitore, Consulente, Collaboratore"
-              />
-            </Grid>
-            
-            <Grid item xs={8} md={4}>
-              <TextField
-                label="Indirizzo"
-                name="indirizzo"
-                value={formData.indirizzo}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-                placeholder="Via/Piazza"
-              />
-            </Grid>
-            
-            <Grid item xs={4} md={2}>
-              <TextField
-                label="N. Civico"
-                name="civico"
-                value={formData.civico}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-              />
-            </Grid>
-            
-            <Grid item xs={4} md={2}>
-              <TextField
-                label="CAP"
-                name="cap"
-                value={formData.cap}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-              />
-            </Grid>
-            
-            <Grid item xs={8} md={4}>
-              <TextField
-                label="Località"
-                name="localita"
-                value={formData.localita}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-              />
-            </Grid>
-            
-            <Grid item xs={4} md={2}>
-              <TextField
-                label="Provincia"
-                name="provincia"
-                value={formData.provincia}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-              />
-            </Grid>
-            
-            <Grid item xs={8} md={5}>
-              <TextField
-                label="Telefono"
-                name="telefono"
-                value={formData.telefono}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={5}>
-              <TextField
-                label="Email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-                type="email"
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Divider sx={{ my: 2 }}>Gestione Regali e Spedizioni</Divider>
-            </Grid>
-            
-            <Grid item xs={12} md={3}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formData.grappa === '1' || formData.grappa === 1 || formData.grappa === true}
-                    onChange={handleCheckboxChange}
-                    name="grappa"
-                  />
-                }
-                label={settings.regaloCorrente || 'Regalo'}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={9}>
-              <TextField
-                label="Extra/Altro regalo"
-                name="extraAltro"
-                value={formData.extraAltro}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-                placeholder="Descrizione di un eventuale regalo extra o alternativo"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="dense">
-                <InputLabel>Consegna/Spedizione</InputLabel>
-                <Select
-                  value={formData.consegnaSpedizione}
-                  label="Consegna/Spedizione"
-                  name="consegnaSpedizione"
-                  onChange={handleInputChange}
-                >
-                  <MenuItem value="">Non assegnato</MenuItem>
-                  {(settings.consegnatari || []).map(consegnatario => (
-                    <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} md={3}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formData.gls === '1' || formData.gls === 1 || formData.gls === true}
-                    onChange={handleCheckboxChange}
-                    name="gls"
-                  />
-                }
-                label="Spedizione GLS"
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <TextField
-                label="Note"
-                name="note"
-                value={formData.note}
-                onChange={handleInputChange}
-                fullWidth
-                margin="dense"
-                multiline
-                rows={3}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Annulla</Button>
-          <Button 
-            variant="contained" 
-            onClick={handleSavePartner}
-            disabled={loading}
-            color="secondary"
-          >
-            Salva
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Dialog per assegnare regalo */}
-      <Dialog open={openAssegnaRegaloDialog} onClose={() => setOpenAssegnaRegaloDialog(false)}>
-        <DialogTitle>
-          Assegna {settings.regaloCorrente || 'Regalo'}
-        </DialogTitle>
-        
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Vuoi assegnare {settings.regaloCorrente || 'il regalo'} a {selected.length} {selected.length === 1 ? 'partner' : 'partner'}?
-          </Typography>
-        </DialogContent>
-        
-        <DialogActions>
-          <Button onClick={() => setOpenAssegnaRegaloDialog(false)}>Annulla</Button>
-          <Button 
-            variant="contained" 
-            onClick={() => handleBulkUpdate('grappa', valoreDaAssegnare)}
-            disabled={loading}
-            color="success"
-          >
-            Conferma
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Dialog per assegnare consegnatario */}
-      <Dialog open={openAssegnaConsegnaDialog} onClose={() => setOpenAssegnaConsegnaDialog(false)}>
-        <DialogTitle>
-          Assegna Consegnatario
-        </DialogTitle>
-        
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Seleziona il consegnatario per {selected.length} {selected.length === 1 ? 'partner' : 'partner'}:
-          </Typography>
+                            ) : ''}
+                          </TableCell>
+                          <TableCell>
+                            {item.gls === '1' || item.gls === 1 || item.gls === true ? (
+                              <Chip 
+                                label="Sì" 
+                                color="secondary" 
+                                size="small" 
+                              />
+                            ) : ''}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Modifica">
+                              <IconButton 
+                                color="primary"
+                                onClick={() => handleEditPartner(item)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <Tooltip title="Elimina">
+                              <IconButton 
+                                color="error"
+                                onClick={() => handleDeletePartner(item)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={13} align="center">
+                      Nessun partner trovato
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
           
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            component="div"
+            count={filteredPartner.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Righe per pagina:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} di ${count}`}
+          />
+        </>
+      )}
+    </Paper>
+
+    {/* Dialog per aggiunta/modifica */}
+    <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {currentPartner ? 'Modifica Partner' : 'Nuovo Partner'}
+      </DialogTitle>
+      
+      <DialogContent>
+        <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Nome *"
+              name="nome"
+              value={formData.nome}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              margin="dense"
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Azienda"
+              name="azienda"
+              value={formData.azienda}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Tipologia"
+              name="tipologia"
+              value={formData.tipologia}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+              placeholder="Es: Fornitore, Consulente, Collaboratore"
+            />
+          </Grid>
+          
+          <Grid item xs={8} md={4}>
+            <TextField
+              label="Indirizzo"
+              name="indirizzo"
+              value={formData.indirizzo}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+              placeholder="Via/Piazza"
+            />
+          </Grid>
+          
+          <Grid item xs={4} md={2}>
+            <TextField
+              label="N. Civico"
+              name="civico"
+              value={formData.civico}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+            />
+          </Grid>
+          
+          <Grid item xs={4} md={2}>
+            <TextField
+              label="CAP"
+              name="cap"
+              value={formData.cap}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+            />
+          </Grid>
+          
+          <Grid item xs={8} md={4}>
+            <TextField
+              label="Località"
+              name="localita"
+              value={formData.localita}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+            />
+          </Grid>
+          
+          <Grid item xs={4} md={2}>
+            <TextField
+              label="Provincia"
+              name="provincia"
+              value={formData.provincia}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+            />
+          </Grid>
+          
+          <Grid item xs={8} md={5}>
+            <TextField
+              label="Telefono"
+              name="telefono"
+              value={formData.telefono}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={5}>
+            <TextField
+              label="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+              type="email"
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Divider sx={{ my: 2 }}>Gestione Regali e Spedizioni</Divider>
+          </Grid>
+          
+          <Grid item xs={12} md={3}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.grappa === '1' || formData.grappa === 1 || formData.grappa === true}
+                  onChange={handleCheckboxChange}
+                  name="grappa"
+                />
+              }
+              label={settings.regaloCorrente || 'Regalo'}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={9}>
+            <TextField
+              label="Extra/Altro regalo"
+              name="extraAltro"
+              value={formData.extraAltro}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+              placeholder="Descrizione di un eventuale regalo extra o alternativo"
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
           <FormControl fullWidth margin="dense">
-            <InputLabel>Consegnatario</InputLabel>
+            <InputLabel>Consegna/Spedizione</InputLabel>
             <Select
-              value={valoreDaAssegnare}
-              label="Consegnatario"
-              onChange={(e) => setValoreDaAssegnare(e.target.value)}
+              value={formData.consegnaSpedizione}
+              label="Consegna/Spedizione"
+              name="consegnaSpedizione"
+              onChange={handleInputChange}
             >
               <MenuItem value="">Non assegnato</MenuItem>
-              {(settings.consegnatari || []).map(consegnatario => (
-                <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
-              ))}
+              {Array.isArray(settings.consegnatari) && settings.consegnatari.length > 0 ? (
+                settings.consegnatari.map(consegnatario => (
+                  <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
+                ))
+              ) : (
+                [
+                  <MenuItem key="andrea" value="Andrea Gosgnach">Andrea Gosgnach</MenuItem>,
+                  <MenuItem key="marco" value="Marco Crasnich">Marco Crasnich</MenuItem>,
+                  <MenuItem key="massimo" value="Massimo Cendron">Massimo Cendron</MenuItem>,
+                  <MenuItem key="matteo" value="Matteo Rocchetto">Matteo Rocchetto</MenuItem>
+                ]
+              )}
             </Select>
+          </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} md={3}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.gls === '1' || formData.gls === 1 || formData.gls === true}
+                  onChange={handleCheckboxChange}
+                  name="gls"
+                />
+              }
+              label="Spedizione GLS"
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <TextField
+              label="Note"
+              name="note"
+              value={formData.note}
+              onChange={handleInputChange}
+              fullWidth
+              margin="dense"
+              multiline
+              rows={3}
+            />
+          </Grid>
+        </Grid>
+      </DialogContent>
+      
+      <DialogActions>
+        <Button onClick={handleCloseDialog}>Annulla</Button>
+        <Button 
+          variant="contained" 
+          onClick={handleSavePartner}
+          disabled={loading}
+          color="secondary"
+        >
+          Salva
+        </Button>
+      </DialogActions>
+    </Dialog>
+    
+    {/* Dialog per assegnare regalo */}
+    <Dialog open={openAssegnaRegaloDialog} onClose={() => setOpenAssegnaRegaloDialog(false)}>
+      <DialogTitle>
+        Assegna {settings.regaloCorrente || 'Regalo'}
+      </DialogTitle>
+      
+      <DialogContent>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          Vuoi assegnare {settings.regaloCorrente || 'il regalo'} a {selected.length} {selected.length === 1 ? 'partner' : 'partner'}?
+        </Typography>
+      </DialogContent>
+      
+      <DialogActions>
+        <Button onClick={() => setOpenAssegnaRegaloDialog(false)}>Annulla</Button>
+        <Button 
+          variant="contained" 
+          onClick={() => handleBulkUpdate('grappa', valoreDaAssegnare)}
+          disabled={loading}
+          color="success"
+        >
+          Conferma
+        </Button>
+      </DialogActions>
+    </Dialog>
+    
+    {/* Dialog per assegnare consegnatario */}
+    <Dialog open={openAssegnaConsegnaDialog} onClose={() => setOpenAssegnaConsegnaDialog(false)}>
+      <DialogTitle>
+        Assegna Consegnatario
+      </DialogTitle>
+      
+      <DialogContent>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          Seleziona il consegnatario per {selected.length} {selected.length === 1 ? 'partner' : 'partner'}:
+        </Typography>
+        
+        <FormControl fullWidth margin="dense">
+          <InputLabel>Consegnatario</InputLabel>
+          <Select
+            value={valoreDaAssegnare}
+            label="Consegnatario"
+            onChange={(e) => setValoreDaAssegnare(e.target.value)}
+          >
+            <MenuItem value="">Non assegnato</MenuItem>
+            {(settings.consegnatari || []).map(consegnatario => (
+              <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
+            ))}
+          </Select>
           </FormControl>
         </DialogContent>
         

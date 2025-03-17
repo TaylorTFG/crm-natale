@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -46,6 +46,9 @@ import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PersonIcon from '@mui/icons-material/Person';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import SortIcon from '@mui/icons-material/Sort';
 
 const ClientiPage = () => {
   // Stato per i dati dei clienti
@@ -64,6 +67,10 @@ const ClientiPage = () => {
   const [filtroGrappa, setFiltroGrappa] = useState('');
   const [filtroConsegna, setFiltroConsegna] = useState('');
   const [filtroGLS, setFiltroGLS] = useState('');
+  
+  // Stato per l'ordinamento
+  const [orderBy, setOrderBy] = useState('nome');
+  const [orderDirection, setOrderDirection] = useState('asc');
   
   // Lista delle località e province per i filtri
   const [localitaList, setLocalitaList] = useState([]);
@@ -150,6 +157,41 @@ const ClientiPage = () => {
     }
   }, [clienti]);
   
+  // Ordina i clienti filtrati in base ai criteri di ordinamento
+  const sortedClienti = useMemo(() => {
+    // Crea una copia dei dati filtrati
+    const dataToSort = [...filteredClienti];
+    
+    // Definisci una funzione di confronto per l'ordinamento
+    const compareFunction = (a, b) => {
+      // Gestisci i valori null/undefined
+      if (!a[orderBy] && !b[orderBy]) return 0;
+      if (!a[orderBy]) return 1;
+      if (!b[orderBy]) return -1;
+      
+      // Confronta stringhe ignorando maiuscole/minuscole
+      const valueA = String(a[orderBy]).toLowerCase();
+      const valueB = String(b[orderBy]).toLowerCase();
+      
+      // Esegui il confronto in base alla direzione
+      if (orderDirection === 'asc') {
+        return valueA.localeCompare(valueB);
+      } else {
+        return valueB.localeCompare(valueA);
+      }
+    };
+    
+    // Ordina i dati
+    return dataToSort.sort(compareFunction);
+  }, [filteredClienti, orderBy, orderDirection]);
+  
+  // Funzione di gestione della richiesta di ordinamento
+  const handleRequestSort = (event, property) => {
+    const isAsc = orderBy === property && orderDirection === 'asc';
+    setOrderDirection(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+  
   // Carica i clienti dal backend
   const loadClienti = async () => {
     try {
@@ -215,16 +257,16 @@ const ClientiPage = () => {
     let filtered = [...clienti];
     
     // Applica filtro ricerca
-  if (searchTerm.trim() !== '') {
-    const lowercasedFilter = searchTerm.toLowerCase();
-    filtered = filtered.filter(item => {
-      return (
-        (item.nome && item.nome.toLowerCase().includes(lowercasedFilter)) ||
-        (item.azienda && item.azienda.toLowerCase().includes(lowercasedFilter)) ||
-        (item.localita && item.localita.toLowerCase().includes(lowercasedFilter))
-      );
-    });
-  }
+    if (searchTerm.trim() !== '') {
+      const lowercasedFilter = searchTerm.toLowerCase();
+      filtered = filtered.filter(item => {
+        return (
+          (item.nome && item.nome.toLowerCase().includes(lowercasedFilter)) ||
+          (item.azienda && item.azienda.toLowerCase().includes(lowercasedFilter)) ||
+          (item.localita && item.localita.toLowerCase().includes(lowercasedFilter))
+        );
+      });
+    }
     
     // Applica filtro località
     if (filtroLocalita !== '') {
@@ -487,7 +529,7 @@ const ClientiPage = () => {
     
     if (checked) {
       // Seleziona tutti gli elementi filtrati nella pagina corrente
-      const currentPageIds = filteredClienti
+      const currentPageIds = sortedClienti
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
         .map(item => item.id);
       
@@ -532,15 +574,6 @@ const ClientiPage = () => {
   const handleOpenMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
-
-  <Button
-  variant="outlined"
-  size="small"
-  color="primary"
-  onClick={handleSelectAllFiltered}
->
-  {selected.length === filteredClienti.length ? 'Deseleziona tutti' : 'Seleziona tutti filtrati'}
-</Button>
   
   const handleCloseMenu = () => {
     setAnchorEl(null);
@@ -685,6 +718,37 @@ const ClientiPage = () => {
       ...prev,
       open: false
     }));
+  };
+
+  // Componente per la cella di intestazione ordinabile
+  const SortableTableCell = ({ label, field }) => {
+    return (
+      <TableCell>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            cursor: 'pointer' 
+          }}
+          onClick={() => handleRequestSort(null, field)}
+        >
+          <Typography component="span" variant="inherit">
+            {label}
+          </Typography>
+          <Box sx={{ ml: 0.5, display: 'flex', alignItems: 'center' }}>
+            {orderBy === field ? (
+              orderDirection === 'asc' ? (
+                <ArrowUpwardIcon fontSize="small" />
+              ) : (
+                <ArrowDownwardIcon fontSize="small" />
+              )
+            ) : (
+              <SortIcon fontSize="small" sx={{ opacity: 0.5 }} />
+            )}
+          </Box>
+        </Box>
+      </TableCell>
+    );
   };
 
   // Renderizzazione dell'interfaccia UI
@@ -880,6 +944,15 @@ const ClientiPage = () => {
               <ListItemText>Assegna Spedizione GLS</ListItemText>
             </MenuItem>
           </Menu>
+          
+          <Button
+            variant="outlined"
+            size="small"
+            color="primary"
+            onClick={handleSelectAllFiltered}
+          >
+            {selected.length === filteredClienti.length ? 'Deseleziona tutti' : 'Seleziona tutti filtrati'}
+          </Button>
         </Box>
       )}
       
@@ -903,18 +976,12 @@ const ClientiPage = () => {
                       />
                     </TableCell>
                     <SortableTableCell 
-                    label="Nome" 
-                    field="nome"
-                    orderBy={orderBy} 
-                    orderDirection={orderDirection} 
-                    onRequestSort={handleRequestSort} 
+                      label="Nome" 
+                      field="nome"
                     />
                     <SortableTableCell
-                    label="Azienda"
-                    field="azienda"
-                    orderBy={orderBy}
-                    orderDirection={orderDirection}
-                    onRequestSort={handleRequestSort} 
+                      label="Azienda"
+                      field="azienda"
                     />
                     <TableCell>Indirizzo</TableCell>
                     <TableCell>CAP</TableCell>
@@ -930,7 +997,7 @@ const ClientiPage = () => {
 
                 <TableBody>
                   {filteredClienti.length > 0 ? (
-                    filteredClienti
+                    sortedClienti
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                       .map((cliente) => {
                         const isItemSelected = isSelected(cliente.id);
@@ -1277,16 +1344,26 @@ const ClientiPage = () => {
           </Typography>
           
           <FormControl fullWidth margin="dense">
-            <InputLabel>Consegnatario</InputLabel>
+            <InputLabel>Consegna/Spedizione</InputLabel>
             <Select
-              value={valoreDaAssegnare}
-              label="Consegnatario"
-              onChange={(e) => setValoreDaAssegnare(e.target.value)}
+              value={formData.consegnaSpedizione}
+              label="Consegna/Spedizione"
+              name="consegnaSpedizione"
+              onChange={handleInputChange}
             >
               <MenuItem value="">Non assegnato</MenuItem>
-              {(settings.consegnatari || []).map(consegnatario => (
-                <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
-              ))}
+              {Array.isArray(settings.consegnatari) && settings.consegnatari.length > 0 ? (
+                settings.consegnatari.map(consegnatario => (
+                  <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
+                ))
+              ) : (
+                [
+                  <MenuItem key="andrea" value="Andrea Gosgnach">Andrea Gosgnach</MenuItem>,
+                  <MenuItem key="marco" value="Marco Crasnich">Marco Crasnich</MenuItem>,
+                  <MenuItem key="massimo" value="Massimo Cendron">Massimo Cendron</MenuItem>,
+                  <MenuItem key="matteo" value="Matteo Rocchetto">Matteo Rocchetto</MenuItem>
+                ]
+              )}
             </Select>
           </FormControl>
         </DialogContent>

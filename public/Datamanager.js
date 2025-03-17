@@ -221,32 +221,47 @@ return { success: false, error: error.message };
    */
   async loadSettings(dataFolderPath) {
     try {
+      console.log("Caricamento impostazioni...");
       const { success, data, error } = await this.loadData('settings', dataFolderPath);
       
       if (!success) {
         throw new Error(error);
       }
       
-      // Se non ci sono impostazioni, crea quelle predefinite
-      if (!data || data.length === 0) {
-        const defaultSettings = {
+      // Log per debugging
+      console.log("Dati impostazioni caricati:", JSON.stringify(data, null, 2));
+      
+      // Verifica che i dati siano nel formato corretto
+      let settingsData = data;
+      if (Array.isArray(data) && data.length > 0) {
+        settingsData = data[0];
+        console.log("Impostazioni caricate da array, usando il primo elemento");
+      } else if (!data || typeof data !== 'object') {
+        console.log("Nessuna impostazione valida trovata, uso valori predefiniti");
+        settingsData = {
           regaloCorrente: 'Grappa',
           annoCorrente: new Date().getFullYear(),
           consegnatari: [
-            'Andrea Gosganch',
+            'Andrea Gosgnach',
             'Marco Crasnich',
             'Massimo Cendron',
             'Matteo Rocchetto'
           ]
         };
-        
-        // Salva le impostazioni predefinite
-        await this.saveData('settings', defaultSettings, dataFolderPath);
-        
-        return { success: true, data: defaultSettings };
       }
       
-      return { success: true, data: data };
+      // Normalizza le impostazioni
+      const normalizedSettings = {
+        regaloCorrente: settingsData.regaloCorrente || 'Grappa',
+        annoCorrente: settingsData.annoCorrente || new Date().getFullYear(),
+        consegnatari: Array.isArray(settingsData.consegnatari) ? 
+          settingsData.consegnatari : 
+          ['Andrea Gosgnach', 'Marco Crasnich', 'Massimo Cendron', 'Matteo Rocchetto']
+      };
+      
+      console.log("Impostazioni normalizzate:", JSON.stringify(normalizedSettings, null, 2));
+      
+      return { success: true, data: normalizedSettings };
     } catch (error) {
       console.error(`Errore durante il caricamento delle impostazioni:`, error);
       
@@ -255,7 +270,7 @@ return { success: false, error: error.message };
         regaloCorrente: 'Grappa',
         annoCorrente: new Date().getFullYear(),
         consegnatari: [
-          'Andrea Gosganch',
+          'Andrea Gosgnach',
           'Marco Crasnich',
           'Massimo Cendron',
           'Matteo Rocchetto'
@@ -273,8 +288,32 @@ return { success: false, error: error.message };
    * @returns {Promise<Object>} - Risultato dell'operazione
    */
   async saveSettings(settings, dataFolderPath) {
-    return await this.saveData('settings', settings, dataFolderPath);
+    try {
+      console.log("Salvataggio impostazioni...", JSON.stringify(settings, null, 2));
+      
+      // Assicurati che le impostazioni siano un oggetto
+      const settingsObject = typeof settings === 'object' ? settings : {};
+      
+      // Normalizza le impostazioni per assicurarsi che abbiano il formato corretto
+      const normalizedSettings = {
+        regaloCorrente: settingsObject.regaloCorrente || 'Grappa',
+        annoCorrente: settingsObject.annoCorrente || new Date().getFullYear(),
+        consegnatari: Array.isArray(settingsObject.consegnatari) ? 
+          settingsObject.consegnatari : 
+          ['Andrea Gosganch', 'Marco Crasnich', 'Massimo Cendron', 'Matteo Rocchetto']
+      };
+      
+      // Salva le impostazioni normalizzate
+      const result = await this.saveData('settings', normalizedSettings, dataFolderPath);
+      
+      console.log("Risultato salvataggio impostazioni:", result);
+      
+      return result;
+    } catch (error) {
+      console.error("Errore durante il salvataggio delle impostazioni:", error);
+      return { success: false, error: error.message };
+    }
   }
-}
+} // Chiude la classe DataManager
 
 module.exports = new DataManager();
