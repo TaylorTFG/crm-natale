@@ -1332,53 +1332,53 @@ const ClientiPage = () => {
         </DialogActions>
       </Dialog>
       
-      {/* Dialog per assegnare consegnatario */}
-      <Dialog open={openAssegnaConsegnaDialog} onClose={() => setOpenAssegnaConsegnaDialog(false)}>
-        <DialogTitle>
-          Assegna Consegnatario
-        </DialogTitle>
-        
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Seleziona il consegnatario per {selected.length} {selected.length === 1 ? 'cliente' : 'clienti'}:
-          </Typography>
-          
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Consegna/Spedizione</InputLabel>
-            <Select
-              value={formData.consegnaSpedizione}
-              label="Consegna/Spedizione"
-              name="consegnaSpedizione"
-              onChange={handleInputChange}
-            >
-              <MenuItem value="">Non assegnato</MenuItem>
-              {Array.isArray(settings.consegnatari) && settings.consegnatari.length > 0 ? (
-                settings.consegnatari.map(consegnatario => (
-                  <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
-                ))
-              ) : (
-                [
-                  <MenuItem key="andrea" value="Andrea Gosgnach">Andrea Gosgnach</MenuItem>,
-                  <MenuItem key="marco" value="Marco Crasnich">Marco Crasnich</MenuItem>,
-                  <MenuItem key="massimo" value="Massimo Cendron">Massimo Cendron</MenuItem>,
-                  <MenuItem key="matteo" value="Matteo Rocchetto">Matteo Rocchetto</MenuItem>
-                ]
-              )}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        
-        <DialogActions>
-          <Button onClick={() => setOpenAssegnaConsegnaDialog(false)}>Annulla</Button>
-          <Button 
-            variant="contained" 
-            onClick={() => handleBulkUpdate('consegnaSpedizione', valoreDaAssegnare)}
-            disabled={loading}
-          >
-            Conferma
-          </Button>
-        </DialogActions>
-      </Dialog>
+      Copia{/* Dialog per assegnare consegnatario */}
+<Dialog open={openAssegnaConsegnaDialog} onClose={() => setOpenAssegnaConsegnaDialog(false)}>
+  <DialogTitle>
+    Assegna Consegnatario
+  </DialogTitle>
+  
+  <DialogContent>
+    <Typography variant="body1" sx={{ mb: 2 }}>
+      Seleziona il consegnatario per {selected.length} {selected.length === 1 ? 'cliente' : 'clienti'}:
+    </Typography>
+    
+    <FormControl fullWidth margin="dense">
+      <InputLabel>Consegna/Spedizione</InputLabel>
+      <Select
+        value={valoreDaAssegnare}
+        label="Consegna/Spedizione"
+        name="consegnaSpedizione"
+        onChange={(e) => setValoreDaAssegnare(e.target.value)}
+      >
+        <MenuItem value="">Non assegnato</MenuItem>
+        {Array.isArray(settings.consegnatari) && settings.consegnatari.length > 0 ? (
+          settings.consegnatari.map(consegnatario => (
+            <MenuItem key={consegnatario} value={consegnatario}>{consegnatario}</MenuItem>
+          ))
+        ) : (
+          [
+            <MenuItem key="andrea" value="Andrea Gosgnach">Andrea Gosgnach</MenuItem>,
+            <MenuItem key="marco" value="Marco Crasnich">Marco Crasnich</MenuItem>,
+            <MenuItem key="massimo" value="Massimo Cendron">Massimo Cendron</MenuItem>,
+            <MenuItem key="matteo" value="Matteo Rocchetto">Matteo Rocchetto</MenuItem>
+          ]
+        )}
+      </Select>
+    </FormControl>
+  </DialogContent>
+  
+  <DialogActions>
+    <Button onClick={() => setOpenAssegnaConsegnaDialog(false)}>Annulla</Button>
+    <Button 
+      variant="contained" 
+      onClick={() => handleBulkUpdate('consegnaSpedizione', valoreDaAssegnare)}
+      disabled={loading}
+    >
+      Conferma
+    </Button>
+  </DialogActions>
+</Dialog>
       
       {/* Dialog per assegnare GLS */}
       <Dialog open={openAssegnaGLSDialog} onClose={() => setOpenAssegnaGLSDialog(false)}>

@@ -56,11 +56,9 @@
     "files": [
       "build/**/*",
       "node_modules/**/*",
-      "public/electron.js",
-      "public/preload.js",
-      "public/dataManager.js",
-      "public/excelImporter.js"
+      "public/**/*"
     ],
+    "asar": false,
     "directories": {
       "buildResources": "assets"
     }

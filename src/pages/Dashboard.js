@@ -201,7 +201,8 @@ const Dashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 height: 140,
-                backgroundColor: '#e3f2fd'
+                backgroundColor: '#e3f2fd',
+                position: 'relative'
               }}
             >
               <Box display="flex" alignItems="center">
@@ -215,15 +216,16 @@ const Dashboard = () => {
                 {clientiCount}
               </Typography>
               
-              <Button 
-                variant="outlined"
-                component={Link}
-                to="/clienti"
-                size="small"
-                sx={{ mt: 'auto', alignSelf: 'flex-end' }}
-              >
-                Gestisci
-              </Button>
+              <Box sx={{ position: 'absolute', bottom: 16, right: 16 }}>
+                <Button 
+                  variant="outlined"
+                  component={Link}
+                  to="/clienti"
+                  size="small"
+                >
+                  Gestisci
+                </Button>
+              </Box>
             </Paper>
           </Grid>
           
@@ -235,7 +237,8 @@ const Dashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 height: 140,
-                backgroundColor: '#fce4ec'
+                backgroundColor: '#fce4ec',
+                position: 'relative'
               }}
             >
               <Box display="flex" alignItems="center">
@@ -249,16 +252,17 @@ const Dashboard = () => {
                 {partnerCount}
               </Typography>
               
-              <Button 
-                variant="outlined"
-                component={Link}
-                to="/partner"
-                size="small"
-                color="secondary"
-                sx={{ mt: 'auto', alignSelf: 'flex-end' }}
-              >
-                Gestisci
-              </Button>
+              <Box sx={{ position: 'absolute', bottom: 16, right: 16 }}>
+                <Button 
+                  variant="outlined"
+                  component={Link}
+                  to="/partner"
+                  size="small"
+                  color="secondary"
+                >
+                  Gestisci
+                </Button>
+              </Box>
             </Paper>
           </Grid>
           
@@ -270,7 +274,8 @@ const Dashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 height: 140,
-                backgroundColor: '#e8f5e9'
+                backgroundColor: '#e8f5e9',
+                position: 'relative'
               }}
             >
               <Box display="flex" alignItems="center">
@@ -284,11 +289,11 @@ const Dashboard = () => {
                 {stats.conRegali}
               </Typography>
               
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
-                <Typography variant="caption">
-                  Altri regali: {stats.conAltriRegali}
-                </Typography>
-                
+              <Typography variant="caption" sx={{ position: 'absolute', bottom: 16, left: 16 }}>
+                Altri regali: {stats.conAltriRegali}
+              </Typography>
+              
+              <Box sx={{ position: 'absolute', bottom: 16, right: 16 }}>
                 <Button 
                   variant="outlined"
                   component={Link}
@@ -310,7 +315,8 @@ const Dashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 height: 140,
-                backgroundColor: '#fff8e1'
+                backgroundColor: '#fff8e1',
+                position: 'relative'
               }}
             >
               <Box display="flex" alignItems="center">
@@ -324,16 +330,17 @@ const Dashboard = () => {
                 {stats.daSpedireGLS}
               </Typography>
               
-              <Button 
-                variant="outlined"
-                component={Link}
-                to="/spedizioni"
-                size="small"
-                color="warning"
-                sx={{ mt: 'auto', alignSelf: 'flex-end' }}
-              >
-                Gestisci
-              </Button>
+              <Box sx={{ position: 'absolute', bottom: 16, right: 16 }}>
+                <Button 
+                  variant="outlined"
+                  component={Link}
+                  to="/spedizioni"
+                  size="small"
+                  color="warning"
+                >
+                  Gestisci
+                </Button>
+              </Box>
             </Paper>
           </Grid>
           

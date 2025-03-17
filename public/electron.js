@@ -4,16 +4,21 @@ const isDev = require('electron-is-dev');
 const fs = require('fs');
 
 // Importa i moduli
-const dataManager = require('./dataManager');
-const excelImporter = require('./excelImporter');
+const dataManager = require(path.join(__dirname, 'dataManager'));
+const excelImporter = require(path.join(__dirname, 'excelImporter'));
 
 // Variabili globali
 let mainWindow;
-const userDataPath = app.getPath('userData');
-console.log('Cartella dati utente:', userDataPath);
+
+// Ottieni il percorso dell'applicazione
+const exePath = app.getAppPath();
+console.log('Percorso app:', exePath);
+
+// Usa una cartella 'data' nella stessa posizione dell'applicazione
+const dataFolderPath = path.join(path.dirname(exePath), 'data');
+console.log('Cartella dati:', dataFolderPath);
 
 // Assicura che la cartella dati esista
-const dataFolderPath = path.join(userDataPath, 'data');
 if (!fs.existsSync(dataFolderPath)) {
   fs.mkdirSync(dataFolderPath, { recursive: true });
   console.log('Cartella dati creata:', dataFolderPath);
